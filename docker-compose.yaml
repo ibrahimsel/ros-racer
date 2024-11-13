@@ -1,0 +1,26 @@
+services:
+  edge_device_1:
+    image: muto_edge_device
+    container_name: edge_device_1
+    networks:
+      - muto_network
+
+  edge_device_2:
+    image: muto_edge_device
+    container_name: edge_device_2
+    networks:
+      - muto_network
+
+  novnc:  
+    image: theasp/novnc:latest
+    environment:
+      - DISPLAY_WIDTH=1728
+      - DISPLAY_HEIGHT=972
+    ports:
+      - "8080:8080"
+    networks:
+      - muto_network
+
+networks:
+  muto_network:
+    driver: bridge
