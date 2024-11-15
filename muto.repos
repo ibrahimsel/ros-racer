@@ -1,0 +1,17 @@
+repositories:
+  agent:
+    type: git
+    url: https://github.com/eclipse-muto/agent.git
+    version: main
+  composer:
+    type: git
+    url: https://github.com/ibrahimsel/composer.git
+    version: dev/compose
+  core:
+    type: git
+    url: https://github.com/ibrahimsel/core.git
+    version: main
+  messages:
+    type: git
+    url: https://github.com/ibrahimsel/messages.git
+    version: main

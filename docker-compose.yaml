@@ -3,15 +3,31 @@ services:
     image: muto_edge_device
     container_name: edge_device_1
     networks:
-      - muto_network
+      - network
 
   edge_device_2:
     image: muto_edge_device
     container_name: edge_device_2
     networks:
-      - muto_network
+      - network
 
-  novnc:  
+  edge_device_3:
+    image: muto_edge_device
+    container_name: edge_device_3
+    networks:
+      - network
+
+  sim:
+    image: ghcr.io/eclipse-muto/multi-agent-sim:humble
+    environment:
+      - DISPLAY=novnc:0.0
+    networks:
+      - x11
+    stdin_open: true
+    tty: true
+    depends_on:
+      - novnc
+  novnc:
     image: theasp/novnc:latest
     environment:
       - DISPLAY_WIDTH=1728
@@ -19,8 +35,14 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - muto_network
-
+      - x11
 networks:
-  muto_network:
+  network:
     driver: bridge
+  network2:
+    driver: bridge
+  network3:
+    driver: bridge
+  network4:
+    driver: bridge
+  x11:

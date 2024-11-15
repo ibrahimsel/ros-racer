@@ -16,12 +16,12 @@
     keep_alive: 60
     user: null
     password: null
-    anonymous: false
+    anonymous: True
     type: blueprint
     attributes: '{"brand": "muto", "model": "blueprint"}'
     prefix: muto
     namespace: org.eclipse.muto.sandbox
-    name: edge-01
+    name: edge-99
 
     commands:
       command1:
