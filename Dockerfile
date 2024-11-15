@@ -11,15 +11,15 @@ RUN apt update && apt install -y \
 
 RUN rosdep init && rosdep update
 
-COPY . /root/muto/
 
 WORKDIR /root/muto
 
 RUN mkdir launch/ config/ src/
-RUN vcs import src < muto.repos
+COPY ./muto.repos /root/muto/
 COPY ./muto.launch.py /root/muto/launch/
 COPY ./muto.yaml /root/muto/config/
 
+RUN vcs import src < muto.repos
 RUN rosdep install --from-paths . --ignore-src -r -y
 RUN . /opt/ros/humble/setup.sh && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 

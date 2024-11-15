@@ -2,25 +2,29 @@ services:
   edge_device_1:
     image: muto_edge_device
     container_name: edge_device_1
+    environment:
+      - racecar_ns=racecar1
+      - ROS_DOMAIN_ID=42
     networks:
-      - network
+      - x11
 
-  edge_device_2:
-    image: muto_edge_device
-    container_name: edge_device_2
-    networks:
-      - network
+  # edge_device_2:
+  #   image: muto_edge_device
+  #   container_name: edge_device_2
+  #   networks:
+  #     - network
 
-  edge_device_3:
-    image: muto_edge_device
-    container_name: edge_device_3
-    networks:
-      - network
+  # edge_device_3:
+  #   image: muto_edge_device
+  #   container_name: edge_device_3
+  #   networks:
+  #     - network
 
   sim:
     image: ghcr.io/eclipse-muto/multi-agent-sim:humble
     environment:
       - DISPLAY=novnc:0.0
+      - ROS_DOMAIN_ID=42
     networks:
       - x11
     stdin_open: true
@@ -37,12 +41,4 @@ services:
     networks:
       - x11
 networks:
-  network:
-    driver: bridge
-  network2:
-    driver: bridge
-  network3:
-    driver: bridge
-  network4:
-    driver: bridge
   x11:
