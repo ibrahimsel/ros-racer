@@ -32,39 +32,90 @@
 #   Composiv.ai - initial API and implementation
 #
 
+####################
+#   SHARED NETWORK #
+####################
+networks:
+  racer-net:           # one bridge network to rule them all
+    driver: bridge
 
+####################
+#     SERVICES     #
+####################
+
+############  SIM + VNC  ############
 services:
   sim:
     build: ./
-    volumes: 
-      - .:/sim_ws/src/f1tenth_gym_ros
+    volumes:
+      - ./sim:/sim_ws/src/f1tenth_gym_ros
     environment:
       - DISPLAY=novnc:0.0
-    networks:
-      - x11
+      - ROS_DOMAIN_ID=0
     stdin_open: true
-    tty: true 
+    tty: true
     depends_on:
       novnc:
-        restart: true
         condition: service_healthy
-  novnc:  
+    networks: [racer-net]
+
+  novnc:
     image: theasp/novnc:latest
     environment:
-      - DISPLAY=${DISPLAY}
       - DISPLAY_WIDTH=1280
       - DISPLAY_HEIGHT=720
     ports:
       - "8080:8080"
-    networks:
-      - x11
-
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
+    networks: [racer-net]
 
-networks:
-  x11:
+############  TELEMETRY BACK END  ############
+  redis:
+    image: redis:7-alpine
+    networks: [racer-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+      start_period: 5s
+      timeout: 3s
+
+  backend:
+    build: ./src/rt-dashboard/server                 # FastAPI + Socket.IO
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks: [racer-net]
+
+############  ROS --> REDIS BRIDGE  ############
+  ros_to_redis:
+    build:
+      context: ./src/rt-dashboard/redis
+      dockerfile: Dockerfile
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ROS_DOMAIN_ID: 0
+    depends_on:
+      - redis
+      - sim
+    networks: [racer-net]
+
+############  FRONT END  ############
+  frontend:
+    build: ./src/rt-dashboard/frontend/realtime-dashboard
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks: [racer-net]

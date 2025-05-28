@@ -40,4 +40,4 @@ gym_bridge:
     map_img_ext: "" # extension of the map's image file (most likely .png or .pgm)
 
     # number of agents to spawn in simulation (should be 1 <= num_agent <= 3)
-    num_agent: 3
+    num_agent: 1
