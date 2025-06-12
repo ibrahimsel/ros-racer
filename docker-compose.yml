@@ -35,13 +35,18 @@
 
 services:
   sim:
-    build: ./
+    build:
+      context: .
+      dockerfile: Dockerfile.sim
     volumes: 
       - .:/sim_ws/src/f1tenth_gym_ros
     environment:
       - DISPLAY=novnc:0.0
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
     networks:
       - x11
+      - edge_network
     stdin_open: true
     tty: true 
     depends_on:
@@ -66,5 +71,27 @@ services:
       start_period: 30s
       timeout: 10s
 
+  edge: &edge_base
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+    networks:
+      - edge_network
+  edge2:
+    <<: *edge_base
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+  edge3:
+    <<: *edge_base
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+
 networks:
   x11:
+  edge_network:
+    driver: bridge

@@ -1,0 +1,17 @@
+repositories:
+  agent:
+    type: git
+    url: https://github.com/eclipse-muto/agent.git
+    version: main
+  composer:
+    type: git
+    url: https://github.com/eclipse-muto/composer.git
+    version: main
+  core:
+    type: git
+    url: https://github.com/eclipse-muto/core.git
+    version: main
+  messages:
+    type: git
+    url: https://github.com/eclipse-muto/messages.git
+    version: main
