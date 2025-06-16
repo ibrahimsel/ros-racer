@@ -38,7 +38,7 @@ The Eclipse SDV Blueprints project hosts a collection of blueprints that demonst
 This is a ROS communication bridge inspired from [f1tenth_gym_ros](https://github.com/f1tenth/f1tenth_gym_ros) with multiagent support (up to 4) for the F1TENTH gym environment that turns it into a ROS2 simulation. The project is primarily intended for ease of use with [Eclipse Muto](https://projects.eclipse.org/projects/automotive.muto) which is an adaptive framework and a runtime platform for dynamically composable model-driven software stacks for ROS
 
 
-![Demo](./src/assets/demo.png)
+![Demo](./assets/demo.png)
 
 # Installation
 
