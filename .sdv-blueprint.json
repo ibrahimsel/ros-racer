@@ -1,0 +1,10 @@
+{
+    "name": "ros-racer",
+    "version": "0.1.0",
+    "description": "Multi-agent ROS racers (F1TENTH-based) orchestrated and managed by an Eclipse SDV stack.",
+    "participatingProjects": [
+        {
+            "id": "automotive.muto"
+        }
+    ]
+}
