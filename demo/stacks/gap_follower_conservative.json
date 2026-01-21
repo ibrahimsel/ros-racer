@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "name": "gap_follower_conservative",
+    "description": "Gap Follower - Conservative variant (MAX_SPEED=0.5, SAFE_GAP=3.0)",
+    "content_type": "stack/archive",
+    "version": "1.0.0"
+  },
+  "launch": {
+    "url": "http://172.17.0.1:9090/gap_follower_conservative.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "981d7eb9c3114655532e7f148e33001204c036bbc07c84a2a296e81536214237",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}

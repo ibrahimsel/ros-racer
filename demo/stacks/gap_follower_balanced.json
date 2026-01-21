@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "name": "gap_follower_balanced",
+    "description": "Gap Follower - Balanced variant (MAX_SPEED=1.5, SAFE_GAP=2.0)",
+    "content_type": "stack/archive",
+    "version": "1.1.0"
+  },
+  "launch": {
+    "url": "http://172.17.0.1:9090/gap_follower_balanced.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "36b4631af6fa8659a16b2c9605f2ec3448d0c940673655956b6feb81fe403db1",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}

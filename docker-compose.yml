@@ -32,66 +32,70 @@
 #   Composiv.ai - initial API and implementation
 #
 
-
 services:
-  sim:
-    build:
-      context: .
-      dockerfile: Dockerfile.sim
-    volumes: 
-      - .:/sim_ws/src/f1tenth_gym_ros
-    environment:
-      - DISPLAY=novnc:0.0
-      - ROS_DOMAIN_ID=0
-      - ROS_LOCALHOST_ONLY=0
-    networks:
-      - x11
-      - edge_network
-    stdin_open: true
-    tty: true 
-    depends_on:
-      novnc:
-        restart: true
-        condition: service_healthy
-  novnc:  
+  novnc:
     image: theasp/novnc:latest
     environment:
-      - DISPLAY=${DISPLAY}
       - DISPLAY_WIDTH=1280
       - DISPLAY_HEIGHT=720
+      - RUN_XTERM=no
+      - RUN_FLUXBOX=yes
     ports:
       - "8080:8080"
     networks:
       - x11
-
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/vnc.html"]
       interval: 10s
       retries: 5
-      start_period: 30s
-      timeout: 10s
+      start_period: 10s
+      timeout: 5s
+
+  sim:
+    build:
+      context: .
+      dockerfile: Dockerfile.sim
+    volumes:
+      - .:/sim_ws/src/f1tenth_gym_ros
+    environment:
+      - DISPLAY=novnc:0.0
+      - ROS_DOMAIN_ID=2
+      - ROS_LOCALHOST_ONLY=0
+    stdin_open: true
+    tty: true
+    depends_on:
+      novnc:
+        condition: service_healthy
+    networks:
+      - x11
 
   edge: &edge_base
     build:
       context: .
       dockerfile: Dockerfile.edge
+    hostname: racecar1
     environment:
-      - ROS_DOMAIN_ID=0
+      - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
+      - VEHICLE_NAME=racecar1
     networks:
-      - edge_network
+      - x11
+
   edge2:
     <<: *edge_base
+    hostname: racecar2
     environment:
-      - ROS_DOMAIN_ID=0
+      - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
+      - VEHICLE_NAME=racecar2
+
   edge3:
     <<: *edge_base
+    hostname: racecar3
     environment:
-      - ROS_DOMAIN_ID=0
+      - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
+      - VEHICLE_NAME=racecar3
 
 networks:
   x11:
-  edge_network:
-    driver: bridge
