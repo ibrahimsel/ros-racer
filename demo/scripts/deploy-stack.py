@@ -22,18 +22,25 @@ import time
 
 
 class StackDeployer(Node):
+    # Known vehicles in the fleet
+    FLEET_VEHICLES = ['racecar1', 'racecar2', 'racecar3']
+
     def __init__(self, stack_file, vehicle=None, method='start'):
         super().__init__('stack_deployer')
 
-        # Determine topic based on vehicle
+        # Determine topics based on vehicle
         if vehicle:
-            topic = f'/{vehicle}_muto/stack'
+            # Single vehicle - publish to its specific topic
+            self.topics = [f'/{vehicle}_muto/stack']
         else:
-            # Broadcast to all vehicles by publishing to each known vehicle
-            topic = '/muto/stack'
+            # Broadcast to all vehicles in the fleet
+            self.topics = [f'/{v}_muto/stack' for v in self.FLEET_VEHICLES]
 
-        self.topic = topic
-        self.publisher = self.create_publisher(MutoAction, topic, 10)
+        # Create a publisher for each topic
+        self.stack_publishers = []
+        for topic in self.topics:
+            pub = self.create_publisher(MutoAction, topic, 10)
+            self.stack_publishers.append((topic, pub))
 
         # Load stack definition
         with open(stack_file) as f:
@@ -45,7 +52,7 @@ class StackDeployer(Node):
         self.get_logger().info(f"Stack deployer initialized")
         self.get_logger().info(f"  Stack: {self.stack.get('metadata', {}).get('name', 'unknown')}")
         self.get_logger().info(f"  Version: {self.stack.get('metadata', {}).get('version', 'unknown')}")
-        self.get_logger().info(f"  Topic: {topic}")
+        self.get_logger().info(f"  Topics: {self.topics}")
         self.get_logger().info(f"  Method: {method}")
 
         # Create timer to publish (allow time for discovery)
@@ -59,10 +66,12 @@ class StackDeployer(Node):
         msg.method = self.method
         msg.payload = json.dumps(self.stack)
 
-        self.publisher.publish(msg)
-        self.published = True
+        # Publish to all topics
+        for topic, publisher in self.stack_publishers:
+            publisher.publish(msg)
+            self.get_logger().info(f"Published stack to {topic}")
 
-        self.get_logger().info(f"Published stack to {self.topic}")
+        self.published = True
         self.get_logger().info(f"Payload preview: {msg.payload[:100]}...")
 
         # Schedule shutdown

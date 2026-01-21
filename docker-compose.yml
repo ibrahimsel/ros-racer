@@ -33,6 +33,22 @@
 #
 
 services:
+  # Artifact server for serving stack packages
+  artifact-server:
+    image: python:3.11-slim
+    working_dir: /artifacts
+    command: python -m http.server 9090
+    volumes:
+      - ./demo/artifacts:/artifacts:ro
+    networks:
+      - x11
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9090')"]
+      interval: 5s
+      retries: 3
+      start_period: 5s
+      timeout: 5s
+
   novnc:
     image: theasp/novnc:latest
     environment:
@@ -61,6 +77,7 @@ services:
       - DISPLAY=novnc:0.0
       - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     stdin_open: true
     tty: true
     depends_on:
@@ -78,6 +95,9 @@ services:
       - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
       - VEHICLE_NAME=racecar1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+      - ./demo:/edge/demo:ro
     networks:
       - x11
 
@@ -88,6 +108,7 @@ services:
       - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
       - VEHICLE_NAME=racecar2
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
   edge3:
     <<: *edge_base
@@ -96,6 +117,7 @@ services:
       - ROS_DOMAIN_ID=2
       - ROS_LOCALHOST_ONLY=0
       - VEHICLE_NAME=racecar3
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 networks:
   x11:

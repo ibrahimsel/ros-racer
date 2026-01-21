@@ -6,10 +6,10 @@
     "version": "1.0.0"
   },
   "launch": {
-    "url": "http://artifact-server:9090/gap_follower_conservative.tar.gz",
+    "url": "http://172.17.0.1:9090/gap_follower_conservative.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "9c49f23f4cafbea94abd71fa97918ed4261a9c812dfc75c80de8f00043212c7f",
+      "checksum": "981d7eb9c3114655532e7f148e33001204c036bbc07c84a2a296e81536214237",
       "launch_file": "run.sh",
       "flatten": true
     }

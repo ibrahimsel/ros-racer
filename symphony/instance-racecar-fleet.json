@@ -1,0 +1,15 @@
+{
+    "metadata": {
+        "name": "racecar-fleet-instance",
+        "labels": {
+            "muto": "demo",
+            "type": "f1tenth"
+        }
+    },
+    "spec": {
+        "solution": "gap-follower-conservative-v-1:1",
+        "target": {
+            "name": "racecar-fleet"
+        }
+    }
+}

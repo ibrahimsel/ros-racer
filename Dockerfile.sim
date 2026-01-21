@@ -47,7 +47,8 @@ RUN apt-get update --fix-missing && \
                        libeigen3-dev \
                        tmux \
                        ros-humble-rviz2 \
-                       ros-humble-rosbridge-server
+                       ros-humble-rosbridge-server \
+                       ros-humble-rmw-cyclonedds-cpp
 RUN apt-get -y dist-upgrade
 RUN pip3 install transforms3d
 
