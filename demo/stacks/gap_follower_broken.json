@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_broken",
-    "description": "Gap Follower - BROKEN variant (intentionally fails for rollback demo)",
+    "description": "Gap Follower - BROKEN (intentionally fails to demonstrate rollback)",
     "content_type": "stack/archive",
-    "version": "1.3.0"
+    "version": "3.0.0"
   },
   "launch": {
     "url": "http://artifact-server:9090/gap_follower_broken.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "09c8a484b3d0411404057a65cf84a0e6b63edbfbd0e935080148c813c5f37538",
+      "checksum": "56525592b4396f13108b72ad27c6a5c95c0e50ac6fb399e505881242a324044a",
       "launch_file": "run.sh",
       "flatten": true
     }

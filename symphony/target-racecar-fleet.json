@@ -3,6 +3,7 @@
         "name": "racecar-fleet"
     },
     "spec": {
+        "displayName": "racecar-fleet",
         "forceRedeploy": true,
         "components": [
             {

@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_aggressive",
-    "description": "Gap Follower - Aggressive variant (MAX_SPEED=2.5, SAFE_GAP=1.2)",
+    "description": "Gap Follower - Spielberg ATTACK MODE (MAX_SPEED=5.0, maximum performance!)",
     "content_type": "stack/archive",
-    "version": "1.2.0"
+    "version": "3.0.0"
   },
   "launch": {
     "url": "http://artifact-server:9090/gap_follower_aggressive.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "5fc42f35f0d231b5a5a4ef3d1a9775f009d17413444f3ee178f138a03ee413c4",
+      "checksum": "9e103a1e90cc8a57e917e50887038297fb8a4b5bcdbd7b7ea154d68ae4663c50",
       "launch_file": "run.sh",
       "flatten": true
     }

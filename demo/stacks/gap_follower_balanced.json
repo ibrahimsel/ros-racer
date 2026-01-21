@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_balanced",
-    "description": "Gap Follower - Balanced variant (MAX_SPEED=1.5, SAFE_GAP=2.0)",
+    "description": "Gap Follower - Spielberg RACING (MAX_SPEED=3.5, competitive driving)",
     "content_type": "stack/archive",
-    "version": "1.1.0"
+    "version": "3.0.0"
   },
   "launch": {
     "url": "http://artifact-server:9090/gap_follower_balanced.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "cf7c58470b69c74dd500a97c7019fe10e8da7c5150631e1aee25a0e01dd14567",
+      "checksum": "f436b411687c819a4607b794774abec64ee3722595cf64c62987859ac576aa21",
       "launch_file": "run.sh",
       "flatten": true
     }

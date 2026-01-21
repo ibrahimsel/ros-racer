@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_conservative",
-    "description": "Gap Follower - Conservative variant (MAX_SPEED=0.5, SAFE_GAP=3.0)",
+    "description": "Gap Follower - Spielberg TOURING (MAX_SPEED=2.0, smooth and controlled)",
     "content_type": "stack/archive",
-    "version": "1.0.0"
+    "version": "3.0.0"
   },
   "launch": {
     "url": "http://172.17.0.1:9090/gap_follower_conservative.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "981d7eb9c3114655532e7f148e33001204c036bbc07c84a2a296e81536214237",
+      "checksum": "5f73036f02f25b72161b00fd6202951a5c6b466d27c8f9994f79a573c396b33a",
       "launch_file": "run.sh",
       "flatten": true
     }
