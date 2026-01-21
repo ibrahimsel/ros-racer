@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_conservative",
-    "description": "Gap Follower - Spielberg TOURING (MAX_SPEED=2.0, smooth and controlled)",
+    "description": "Gap Follower - STABILITY BUILD (The Pro) - Clean, confident driving",
     "content_type": "stack/archive",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   "launch": {
     "url": "http://artifact-server:9090/gap_follower_conservative.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "5f73036f02f25b72161b00fd6202951a5c6b466d27c8f9994f79a573c396b33a",
+      "checksum": "cfa511599807f33fc77e027ca722580f1a8f2458e1b554447cfb0ec3bde39322",
       "launch_file": "run.sh",
       "flatten": true
     }

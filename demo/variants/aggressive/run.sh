@@ -29,6 +29,7 @@ source install/setup.bash
 export GAP_FOLLOWER_MAX_SPEED=2.5
 export GAP_FOLLOWER_MIN_SPEED=1.5
 export GAP_FOLLOWER_SAFE_GAP=1.2
+export GAP_FOLLOWER_STEER_RATE=5.5
 
 echo "Starting gap_follower node (aggressive)..."
 ros2 run gap_follower gap_follower

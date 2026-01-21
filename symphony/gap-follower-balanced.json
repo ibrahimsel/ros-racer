@@ -1,15 +1,15 @@
 {
   "metadata": {
     "name": "gap_follower_balanced",
-    "description": "Gap Follower - Spielberg RACING (MAX_SPEED=3.5, competitive driving)",
+    "description": "Gap Follower - AGGRESSIVE BUILD (The Racer) - Fast and responsive",
     "content_type": "stack/archive",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   "launch": {
     "url": "http://172.17.0.1:9090/gap_follower_balanced.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "f436b411687c819a4607b794774abec64ee3722595cf64c62987859ac576aa21",
+      "checksum": "3cd8f6eaa694d6c598f2b103ffa65446d75132c070fbd3a3fc9f40c5cc509897",
       "launch_file": "run.sh",
       "flatten": true
     }

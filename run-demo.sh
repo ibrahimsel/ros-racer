@@ -123,6 +123,40 @@ check_command() {
     fi
 }
 
+# Generate artifact tar.gz files and update checksums
+generate_artifacts() {
+    print_info "Generating artifact archives..."
+
+    local VARIANTS_DIR="$SCRIPT_DIR/demo/variants"
+    local ARTIFACTS_DIR="$SCRIPT_DIR/demo/artifacts"
+
+    mkdir -p "$ARTIFACTS_DIR"
+
+    for variant in conservative balanced aggressive broken; do
+        local tar_name="gap_follower_${variant}.tar.gz"
+
+        # Create tar.gz from variant directory
+        tar -czf "$ARTIFACTS_DIR/$tar_name" -C "$VARIANTS_DIR/$variant" .
+
+        # Calculate checksum
+        local checksum=$(sha256sum "$ARTIFACTS_DIR/$tar_name" | cut -d' ' -f1)
+
+        # Update demo/stacks JSON
+        local stacks_json="$STACKS_DIR/gap_follower_${variant}.json"
+        if [ -f "$stacks_json" ]; then
+            sed -i "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$stacks_json"
+        fi
+
+        # Update symphony JSON (convert underscore to hyphen for filename)
+        local symphony_json="$SYMPHONY_DIR/gap-follower-${variant}.json"
+        if [ -f "$symphony_json" ]; then
+            sed -i "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$symphony_json"
+        fi
+
+        print_success "Created $tar_name (${checksum:0:12}...)"
+    done
+}
+
 # Show Muto logs from inside a container
 show_muto_logs() {
     local container="${1:-ros-racer-edge-1}"
@@ -306,14 +340,14 @@ create_symphony_target() {
 
     # Delete existing if present
     curl -s -X DELETE -H "Authorization: Bearer $token" \
-        "${SYMPHONY_API_URL}targets/$target_name" > /dev/null 2>&1
+        "${SYMPHONY_API_URL}targets/registry/$target_name" > /dev/null 2>&1
 
     # Create new target
     local response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $token" \
         -d @"$json_file" \
-        "${SYMPHONY_API_URL}targets/$target_name" 2>/dev/null)
+        "${SYMPHONY_API_URL}targets/registry/$target_name" 2>/dev/null)
 
     local http_status=$(echo "$response" | tail -n1)
 
@@ -348,6 +382,7 @@ create_symphony_instance() {
         }
     },
     "spec": {
+        "displayName": "$instance_name",
         "solution": "${solution_name}:1",
         "target": {
             "name": "$target_name"
@@ -446,6 +481,10 @@ phase_prerequisites() {
     else
         print_success "ROS $ROS_DISTRO already sourced"
     fi
+
+    echo ""
+    # Generate artifact archives and update checksums
+    generate_artifacts
 
     wait_for_enter
 }
@@ -583,7 +622,7 @@ This algorithm prioritizes safety with slow speeds and wide safety margins."
     echo -e "${DIM}Watch the simulation - the cars should be moving slowly and cautiously.${NC}"
 
     # Show Muto logs and state after first deployment
-    show_muto_logs "ros-racer-edge-1" 15 "racecar1 Muto Logs"
+    show_muto_logs "ros-racer-edge-1" 45 "racecar1 Muto Logs"
     show_muto_state "ros-racer-edge-1" "racecar1 State"
 
     wait_with_message "Observe the cars moving slowly."
@@ -623,7 +662,7 @@ an Over-The-Air update with improved performance."
     echo -e "${DIM}Watch the transition - the cars should immediately drive faster.${NC}"
 
     # Show logs and state
-    show_muto_logs "ros-racer-edge-1" 15 "racecar1 Muto Logs"
+    show_muto_logs "ros-racer-edge-1" 45 "racecar1 Muto Logs"
     show_muto_state "ros-racer-edge-1" "racecar1 State"
 
     wait_with_message "Observe the speed increase."
@@ -659,7 +698,7 @@ This pushes the cars to their limits with high speeds and tight safety margins."
     echo -e "${DIM}Watch the cars - they should be driving much faster now!${NC}"
 
     # Show logs
-    show_muto_logs "ros-racer-edge-1" 15 "racecar1 Muto Logs"
+    show_muto_logs "ros-racer-edge-1" 45 "racecar1 Muto Logs"
 
     wait_with_message "Observe the aggressive driving behavior."
 }
@@ -700,7 +739,7 @@ build makes it to production."
     echo ""
     # Show logs to see the failure and rollback
     print_info "Logs showing the failure and rollback:"
-    show_muto_logs "ros-racer-edge-1" 25 "racecar1 Muto Logs (Failure & Rollback)"
+    show_muto_logs "ros-racer-edge-1" 45 "racecar1 Muto Logs (Failure & Rollback)"
 
     echo ""
     echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
@@ -749,13 +788,13 @@ phase_symphony_setup() {
     echo ""
 
     print_action "Creating solution: gap-follower-conservative"
-    create_symphony_solution "$SYMPHONY_DIR/gap-follower-conservative.json"
+    create_symphony_solution "$STACKS_DIR/gap_follower_conservative.json"
 
     print_action "Creating solution: gap-follower-balanced"
-    create_symphony_solution "$SYMPHONY_DIR/gap-follower-balanced.json"
+    create_symphony_solution "$STACKS_DIR/gap_follower_balanced.json"
 
     print_action "Creating solution: gap-follower-aggressive"
-    create_symphony_solution "$SYMPHONY_DIR/gap-follower-aggressive.json"
+    create_symphony_solution "$STACKS_DIR/gap_follower_aggressive.json"
 
     echo ""
     echo "Creating Target..."
@@ -956,7 +995,7 @@ main() {
     phase_prerequisites
 
     # PART 1: Infrastructure
-    phase_start_symphony
+    # phase_start_symphony
     phase_start_simulation
 
     # PART 2: Direct Deployment
@@ -967,10 +1006,10 @@ main() {
     phase_deploy_broken
 
     # PART 3: Symphony Orchestration
-    phase_symphony_header
-    phase_symphony_setup
-    phase_symphony_deploy_conservative
-    phase_symphony_deploy_balanced
+    # phase_symphony_header
+    # phase_symphony_setup
+    # phase_symphony_deploy_conservative
+    # phase_symphony_deploy_balanced
 
     # PART 4: Fleet Heterogeneity
     phase_fleet_heterogeneity
