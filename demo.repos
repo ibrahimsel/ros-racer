@@ -14,4 +14,4 @@ repositories:
   composer:
     type: git
     url: https://github.com/ibrahimsel/composer.git
-    version: test/e2e-blueprint
+    version: main
