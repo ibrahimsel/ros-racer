@@ -15,7 +15,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
 
 RUN git clone https://github.com/ibrahimsel/muto.git -b test/e2e
 WORKDIR '/edge/muto'
-RUN vcs import src < demo.repos 
+RUN vcs import src < muto.repos 
 RUN source /opt/ros/humble/setup.bash && \
     rosdep update && \
     rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
