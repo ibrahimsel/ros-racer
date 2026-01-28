@@ -1,8 +1,8 @@
 repositories:
   agent:
     type: git
-    url: https://github.com/ibrahimsel/agent.git
-    version: fix/component-registry
+    url: https://github.com/eclipse-muto/agent.git
+    version: main
   messages:
     type: git
     url: https://github.com/eclipse-muto/messages.git
@@ -13,5 +13,5 @@ repositories:
     version: main
   composer:
     type: git
-    url: https://github.com/ibrahimsel/composer.git
+    url: https://github.com/eclipse-muto/composer.git
     version: main
