@@ -1,10 +1,47 @@
+# Default color palette for dynamic agent assignment (supports up to 20 agents)
+# Colors cycle through this list when more agents are spawned
+default_colors:
+  - 'black'
+  - 'green'
+  - 'red'
+  - 'blue'
+  - 'yellow'
+  - 'purple'
+  - 'cyan'
+  - 'orange'
+  - 'pink'
+  - 'brown'
+
+# Per-agent configuration (optional, overrides default_colors)
 racecar:
   agent1:
     vehicle_name: 'racecar1'
-    color: 'black' # change between 'black', 'green', 'red', 'blue'
+    color: 'black'
   agent2:
     vehicle_name: 'racecar2'
     color: 'green'
   agent3:
     vehicle_name: 'racecar3'
     color: 'red'
+  agent4:
+    vehicle_name: 'racecar4'
+    color: 'blue'
+  agent5:
+    vehicle_name: 'racecar5'
+    color: 'yellow'
+  agent6:
+    vehicle_name: 'racecar6'
+    color: 'purple'
+  agent7:
+    vehicle_name: 'racecar7'
+    color: 'cyan'
+  agent8:
+    vehicle_name: 'racecar8'
+    color: 'orange'
+  agent9:
+    vehicle_name: 'racecar9'
+    color: 'pink'
+  agent10:
+    vehicle_name: 'racecar10'
+    color: 'brown'
+  # Agents 11-20 will use colors from default_colors cycling

@@ -51,11 +51,17 @@ RUN apt-get update --fix-missing && \
                        ros-humble-rosbridge-server \
                        ros-humble-rmw-cyclonedds-cpp
 RUN apt-get -y dist-upgrade
-RUN pip3 install transforms3d
 
-# f1tenth gym
-RUN git clone https://github.com/f1tenth/f1tenth_gym
-RUN cd f1tenth_gym && \
+# Install uv for fast package management (cross-platform)
+RUN pip3 install uv
+
+RUN uv pip install --system transforms3d
+
+# f1tenth gym (from local submodule for development flexibility)
+# Note: Using pip instead of uv here because gym==0.19.0 (f1tenth_gym dependency)
+# has legacy setuptools issues that pip handles more gracefully
+COPY ./external/f1tenth_gym /f1tenth_gym
+RUN cd /f1tenth_gym && \
     pip3 install -e .
 
 COPY ./launch_sim.sh /sim_ws/src/launch_sim.sh

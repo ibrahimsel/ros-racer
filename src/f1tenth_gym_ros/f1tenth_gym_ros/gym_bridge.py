@@ -40,9 +40,12 @@ import rclpy
 import numpy as np
 from transforms3d import euler
 from rclpy.node import Node
+
+from f1tenth_gym_ros.spawn_utils import get_spawn_positions
 from std_msgs.msg import Bool, Int32, String
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import PoseStamped, Point
 from geometry_msgs.msg import Transform
 from geometry_msgs.msg import TransformStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -51,6 +54,38 @@ from visualization_msgs.msg import Marker, MarkerArray
 from tf2_ros import TransformBroadcaster
 from ament_index_python.packages import get_package_share_directory
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+
+
+class TrajectoryTracker:
+    """Track agent trajectory history for visualization."""
+
+    def __init__(self, max_points: int = 500, sample_distance: float = 0.1):
+        self.max_points = max_points
+        self.sample_distance = sample_distance
+        self.points = []  # List of (x, y, theta) tuples
+        self.last_point = None
+
+    def add_point(self, x: float, y: float, theta: float):
+        """Add a point if it's far enough from the last point."""
+        if self.last_point is None:
+            self.points.append((x, y, theta))
+            self.last_point = (x, y)
+        else:
+            dist = np.sqrt((x - self.last_point[0])**2 + (y - self.last_point[1])**2)
+            if dist >= self.sample_distance:
+                self.points.append((x, y, theta))
+                self.last_point = (x, y)
+                if len(self.points) > self.max_points:
+                    self.points.pop(0)
+
+    def reset(self):
+        """Clear trajectory history."""
+        self.points.clear()
+        self.last_point = None
+
+    def get_points(self):
+        """Return list of trajectory points."""
+        return self.points
 
 
 class LapTimeTracker:
@@ -96,6 +131,9 @@ class GymBridge(Node):
         self.declare_parameter("map_path", "")
         self.declare_parameter("map_img_ext", "")
         self.declare_parameter("num_agent", 3)
+        self.declare_parameter("spawn_strategy", "auto")
+        self.declare_parameter("spawn_min_distance", 1.5)
+        self.declare_parameter("spawn_vehicle_radius", 0.22)
         default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                         "maps",
                                         "example_map")
@@ -104,6 +142,8 @@ class GymBridge(Node):
             Bool, 'sim_start', self.start_callback, 10)
         self.pause_subscriber = self.create_subscription(
             Bool, 'sim_pause', self.pause_callback, 10)
+        self.reset_subscriber = self.create_subscription(
+            Bool, 'sim_reset', self.reset_callback, 10)
         self.choose_active_agent_subscriber = self.create_subscription(
             Int32, 'racecar_to_estimate_pose', self.choose_active_agent_callback, 10)
 
@@ -117,6 +157,8 @@ class GymBridge(Node):
         try:
             self.map_path = self.get_parameter("map_path").value
             self.map_img_ext = self.get_parameter("map_img_ext").value
+            if not self.map_path:
+                raise ValueError("map_path is empty")
             self.env = gym.make(
                 "f110_gym:f110-v0",
                 map=self.map_path,
@@ -126,10 +168,12 @@ class GymBridge(Node):
         except Exception as e:
             self.get_logger().warn(
                 f'Given map path can not be found. Defaulting to example_map.')
+            self.map_path = default_map_path
+            self.map_img_ext = '.png'
             self.env = gym.make(
                 "f110_gym:f110-v0",
-                map=default_map_path,
-                map_ext='.png',
+                map=self.map_path,
+                map_ext=self.map_img_ext,
                 num_agents=self.num_agents,
             )
 
@@ -150,19 +194,59 @@ class GymBridge(Node):
         self.angle_max = scan_fov / 2.0
         self.angle_inc = scan_fov / scan_beams
 
-        self.pose_reset_arr = np.zeros((self.num_agents, 3))
-        for i in range(len(self.pose_reset_arr)):
-            # spawn racecars in a vertical column with 1.0 meters of distance between each
-            self.pose_reset_arr[i][0] += i
+        # Get spawn configuration
+        spawn_strategy = self.get_parameter("spawn_strategy").value
+        spawn_min_distance = self.get_parameter("spawn_min_distance").value
+        spawn_vehicle_radius = self.get_parameter("spawn_vehicle_radius").value
+
+        # Auto-spawn: find valid positions based on map occupancy grid
+        if spawn_strategy != "manual":
+            try:
+                map_yaml_path = self.map_path + ".yaml"
+                self.pose_reset_arr = get_spawn_positions(
+                    map_yaml_path,
+                    self.num_agents,
+                    min_distance=spawn_min_distance,
+                    vehicle_radius=spawn_vehicle_radius,
+                    strategy=spawn_strategy
+                )
+                self.get_logger().info(
+                    f"Auto-spawned {self.num_agents} agents using '{spawn_strategy}' strategy"
+                )
+            except Exception as e:
+                self.get_logger().warn(
+                    f"Auto-spawn failed: {e}. Using fallback manual spawn."
+                )
+                # Fallback to manual spawn
+                self.pose_reset_arr = np.zeros((self.num_agents, 3))
+                for i in range(self.num_agents):
+                    self.pose_reset_arr[i][0] = i
+        else:
+            # Manual spawn: hardcoded positions
+            self.pose_reset_arr = np.zeros((self.num_agents, 3))
+            for i in range(self.num_agents):
+                self.pose_reset_arr[i][0] = i
 
         self.obs, _, self.done, _ = self.env.reset(self.pose_reset_arr)
 
         # Timer rates optimized for smooth simulation:
         # - Physics: 100 Hz (10ms) - matches typical simulator timestep
-        # - Sensor publish: 40 Hz (25ms) - typical lidar rate, reduces CPU load
-        # - Lap times: 10 Hz (100ms) - UI update rate, no need for 1000 Hz
+        # - Sensor publish: adaptive based on agent count
+        # - Lap times: 10 Hz (100ms) - UI update rate
         self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)  # 100 Hz physics
-        self.timer = self.create_timer(0.025, self.timer_callback)  # 40 Hz sensor publish
+
+        # Adaptive sensor publish rate based on agent count (performance optimization)
+        if self.num_agents <= 5:
+            sensor_period = 0.025  # 40 Hz for small agent counts
+        elif self.num_agents <= 10:
+            sensor_period = 0.04   # 25 Hz for medium agent counts
+        else:
+            sensor_period = 0.05   # 20 Hz for large agent counts (20 agents)
+
+        self.timer = self.create_timer(sensor_period, self.timer_callback)
+        self.get_logger().info(
+            f"Sensor publish rate: {1.0/sensor_period:.0f} Hz (adaptive for {self.num_agents} agents)"
+        )
         self.lap_time_timer = self.create_timer(0.1, self.publish_lap_times)  # 10 Hz lap times
         self.lap_time_publisher = self.create_publisher(
             String, 'lap_times', 10
@@ -217,6 +301,25 @@ class GymBridge(Node):
 
         self.marker_pub = self.create_publisher(MarkerArray, 'racecar_labels', 10)
 
+        # === Visualization Publishers ===
+        # Trajectory paths for each agent
+        self.trajectory_trackers = [TrajectoryTracker() for _ in range(self.num_agents)]
+        self.trajectory_publishers = [
+            self.create_publisher(Path, f"{self.racecar_namespace}{i+1}/trajectory", 10)
+            for i in range(self.num_agents)
+        ]
+
+        # Velocity vectors visualization
+        self.velocity_marker_pub = self.create_publisher(
+            MarkerArray, 'velocity_vectors', 10)
+
+        # Safety zones visualization
+        self.safety_zone_pub = self.create_publisher(
+            MarkerArray, 'safety_zones', 10)
+
+        # Trajectory visualization timer (5 Hz - lower rate for paths)
+        self.viz_timer = self.create_timer(0.2, self.publish_visualizations)
+
         self.racecar_drive_published = False
         self.last_log_time = time.time()
         self.pose_reset_sub = self.create_subscription(
@@ -228,15 +331,21 @@ class GymBridge(Node):
         self.drive_timeout = 0.1  # 100ms timeout - stop car if no command received
 
     def handle_collision(self):
-        """Checks for collision and handles if there is any."""
+        """Checks for collision and handles if there is any.
+
+        Optimized: Uses vectorized NumPy min() instead of iterating all 1080 beams.
+        For 20 agents, this reduces from 21,600 comparisons to 20 min operations.
+        """
         collision_threshold = 0.21
+        # Vectorized: get minimum scan distance for each agent in one operation
+        min_scans = np.min(self.obs["scans"], axis=1)
+
         for racecar_idx in range(self.num_agents):
-            for scan in self.obs["scans"][racecar_idx]:
-                if not self.agent_disqualified[racecar_idx] and scan <= collision_threshold:
-                    self.agent_disqualified[racecar_idx] = True
-                    self.lap_time_trackers[racecar_idx].reset(restart=False)
-                    self.get_logger().info(
-                        f"Agent {racecar_idx + 1} is disqualified")
+            if not self.agent_disqualified[racecar_idx] and min_scans[racecar_idx] <= collision_threshold:
+                self.agent_disqualified[racecar_idx] = True
+                self.lap_time_trackers[racecar_idx].reset(restart=False)
+                self.get_logger().info(
+                    f"Agent {racecar_idx + 1} is disqualified")
 
     def choose_active_agent_callback(self, agent_index):
         self.active_agent_to_reset_pose = agent_index.data
@@ -280,6 +389,51 @@ class GymBridge(Node):
                 for tracker in self.lap_time_trackers:
                     tracker.start()
                 self.get_logger().info('Tracker and Simulation resumed')
+
+    def reset_callback(self, msg):
+        """Reset simulation to initial state."""
+        if msg.data:
+            self.simulation_running = False
+            self.simulation_paused = False
+
+            # Reset all agents to starting positions
+            # Re-run auto-spawn to get fresh positions
+            spawn_strategy = self.get_parameter("spawn_strategy").value
+            spawn_min_distance = self.get_parameter("spawn_min_distance").value
+            spawn_vehicle_radius = self.get_parameter("spawn_vehicle_radius").value
+
+            if spawn_strategy != "manual":
+                try:
+                    map_yaml_path = self.map_path + ".yaml"
+                    self.pose_reset_arr = get_spawn_positions(
+                        map_yaml_path,
+                        self.num_agents,
+                        min_distance=spawn_min_distance,
+                        vehicle_radius=spawn_vehicle_radius,
+                        strategy=spawn_strategy
+                    )
+                except Exception:
+                    # Fallback to manual spawn
+                    self.pose_reset_arr = np.zeros((self.num_agents, 3))
+                    for i in range(self.num_agents):
+                        self.pose_reset_arr[i][0] = i
+            else:
+                self.pose_reset_arr = np.zeros((self.num_agents, 3))
+                for i in range(self.num_agents):
+                    self.pose_reset_arr[i][0] = i
+
+            # Reset environment
+            self.obs, _, self.done, _ = self.env.reset(np.array(self.pose_reset_arr))
+
+            # Reset lap trackers, trajectory trackers, and disqualification status
+            for i in range(self.num_agents):
+                self.lap_time_trackers[i].reset(restart=False)
+                self.trajectory_trackers[i].reset()
+                self.agent_disqualified[i] = False
+                self.agent_lap_completed[i] = False
+                self.best_lap_times[i] = 0.0
+
+            self.get_logger().info('Simulation reset to initial state')
 
     def drive_callback(self, drive_msg):
         current_time = time.time()
@@ -358,9 +512,7 @@ class GymBridge(Node):
 
             # Publish transforms, odom, and markers ONCE (they loop internally)
             self._publish_odom(ts)
-            self._publish_transforms(ts)
-            self._publish_laser_transforms(ts)
-            self._publish_wheel_transforms(ts)
+            self._publish_all_transforms_batched(ts)  # Batched TF broadcast (optimized)
             self._publish_name_markers(ts)
 
     def pose_reset_callback(self, pose_msg):
@@ -431,59 +583,215 @@ class GymBridge(Node):
             arr.markers.append(m)
         self.marker_pub.publish(arr)
 
+    def publish_visualizations(self):
+        """Publish all visualization markers (trajectories, velocity, safety zones)."""
+        if not self.simulation_running or self.simulation_paused:
+            return
 
-    def _publish_transforms(self, ts):
+        ts = self.get_clock().now().to_msg()
+
+        # Update trajectory trackers with current positions
+        for i in range(self.num_agents):
+            self.trajectory_trackers[i].add_point(
+                self.obs["poses_x"][i],
+                self.obs["poses_y"][i],
+                self.obs["poses_theta"][i]
+            )
+
+        # Publish trajectory paths
+        self._publish_trajectories(ts)
+
+        # Publish velocity vectors
+        self._publish_velocity_markers(ts)
+
+        # Publish safety zones
+        self._publish_safety_zones(ts)
+
+    def _publish_trajectories(self, ts):
+        """Publish trajectory path for each agent."""
+        for i in range(self.num_agents):
+            path = Path()
+            path.header.stamp = ts
+            path.header.frame_id = "map"
+
+            for x, y, theta in self.trajectory_trackers[i].get_points():
+                pose = PoseStamped()
+                pose.header = path.header
+                pose.pose.position.x = x
+                pose.pose.position.y = y
+                pose.pose.position.z = 0.0
+                quat = euler.euler2quat(0.0, 0.0, theta, axes="sxyz")
+                pose.pose.orientation.w = quat[0]
+                pose.pose.orientation.x = quat[1]
+                pose.pose.orientation.y = quat[2]
+                pose.pose.orientation.z = quat[3]
+                path.poses.append(pose)
+
+            self.trajectory_publishers[i].publish(path)
+
+    def _publish_velocity_markers(self, ts):
+        """Publish velocity arrow markers for all agents."""
+        arr = MarkerArray()
+
+        for i in range(self.num_agents):
+            ns = f"{self.racecar_namespace}{i+1}"
+
+            m = Marker()
+            m.header.stamp = ts
+            m.header.frame_id = f"{ns}/base_link"
+            m.ns = "velocity_vectors"
+            m.id = i
+            m.type = Marker.ARROW
+            m.action = Marker.ADD
+
+            # Arrow from origin pointing forward
+            m.pose.position.z = 0.15
+
+            # Scale arrow by velocity magnitude
+            vel_x = self.obs["linear_vels_x"][i]
+            vel_y = self.obs["linear_vels_y"][i]
+            speed = np.sqrt(vel_x**2 + vel_y**2)
+
+            m.scale.x = max(speed * 0.3, 0.1)  # Arrow length
+            m.scale.y = 0.05  # Arrow width
+            m.scale.z = 0.05  # Arrow height
+
+            # Color based on speed (green -> yellow -> red)
+            max_speed = 8.0
+            ratio = min(speed / max_speed, 1.0)
+            m.color.r = ratio
+            m.color.g = 1.0 - ratio * 0.5
+            m.color.b = 0.0
+            m.color.a = 0.8
+
+            arr.markers.append(m)
+
+        self.velocity_marker_pub.publish(arr)
+
+    def _publish_safety_zones(self, ts):
+        """Publish safety zone circles for each agent."""
+        arr = MarkerArray()
+        collision_threshold = 0.21
+
+        for i in range(self.num_agents):
+            ns = f"{self.racecar_namespace}{i+1}"
+
+            m = Marker()
+            m.header.stamp = ts
+            m.header.frame_id = f"{ns}/base_link"
+            m.ns = "safety_zones"
+            m.id = i
+            m.type = Marker.CYLINDER
+            m.action = Marker.ADD
+
+            m.pose.position.z = 0.01  # Just above ground
+            m.scale.x = collision_threshold * 4  # Diameter
+            m.scale.y = collision_threshold * 4
+            m.scale.z = 0.02  # Very thin cylinder
+
+            # Get minimum scan distance for this agent
+            min_scan = np.min(self.obs["scans"][i])
+
+            # Color: red if close to collision, green otherwise
+            if min_scan < collision_threshold * 3:
+                # Danger zone - red
+                m.color.r = 1.0
+                m.color.g = 0.2
+                m.color.b = 0.0
+            elif min_scan < collision_threshold * 5:
+                # Warning zone - yellow
+                m.color.r = 1.0
+                m.color.g = 1.0
+                m.color.b = 0.0
+            else:
+                # Safe - green
+                m.color.r = 0.0
+                m.color.g = 1.0
+                m.color.b = 0.0
+            m.color.a = 0.3
+
+            arr.markers.append(m)
+
+        self.safety_zone_pub.publish(arr)
+
+    def _publish_all_transforms_batched(self, ts):
+        """Batch publish all transforms in a single sendTransform call.
+
+        Optimized: Collects all transforms (base_link, laser, wheels) and sends
+        them in one call instead of 4*num_agents separate calls.
+        For 20 agents, this reduces from 80 sendTransform calls to 1.
+        """
+        transforms = []
+
         for i in range(self.num_agents):
             racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_t = Transform()
-            racecar_t.translation.x = self.obs["poses_x"][i]
-            racecar_t.translation.y = self.obs["poses_y"][i]
-            racecar_t.translation.z = 0.0
-            racecar_quat = euler.euler2quat(
+
+            # Base link transform (map -> base_link)
+            base_ts = TransformStamped()
+            base_ts.header.stamp = ts
+            base_ts.header.frame_id = "map"
+            base_ts.child_frame_id = racecar_namespace + "/base_link"
+            base_ts.transform.translation.x = self.obs["poses_x"][i]
+            base_ts.transform.translation.y = self.obs["poses_y"][i]
+            base_ts.transform.translation.z = 0.0
+            base_quat = euler.euler2quat(
                 0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
-            racecar_t.rotation.x = racecar_quat[1]
-            racecar_t.rotation.y = racecar_quat[2]
-            racecar_t.rotation.z = racecar_quat[3]
-            racecar_t.rotation.w = racecar_quat[0]
-            racecar_ts = TransformStamped()
-            racecar_ts.transform = racecar_t
-            racecar_ts.header.stamp = ts
-            racecar_ts.header.frame_id = "map"
-            racecar_ts.child_frame_id = racecar_namespace + "/base_link"
-            self.br.sendTransform(racecar_ts)
+            base_ts.transform.rotation.x = base_quat[1]
+            base_ts.transform.rotation.y = base_quat[2]
+            base_ts.transform.rotation.z = base_quat[3]
+            base_ts.transform.rotation.w = base_quat[0]
+            transforms.append(base_ts)
+
+            # Laser transform (base_link -> laser)
+            laser_ts = TransformStamped()
+            laser_ts.header.stamp = ts
+            laser_ts.header.frame_id = racecar_namespace + "/base_link"
+            laser_ts.child_frame_id = racecar_namespace + "/laser"
+            laser_ts.transform.translation.x = self.scan_distance_to_base_link
+            laser_ts.transform.rotation.w = 1.0
+            transforms.append(laser_ts)
+
+            # Wheel transforms (hinge -> wheel)
+            steering_angle = self.drive_msgs[i][0]
+            wheel_quat = euler.euler2quat(0.0, 0.0, steering_angle, axes="sxyz")
+
+            # Front left wheel
+            left_wheel_ts = TransformStamped()
+            left_wheel_ts.header.stamp = ts
+            left_wheel_ts.header.frame_id = racecar_namespace + "/front_left_hinge"
+            left_wheel_ts.child_frame_id = racecar_namespace + "/front_left_wheel"
+            left_wheel_ts.transform.rotation.x = wheel_quat[1]
+            left_wheel_ts.transform.rotation.y = wheel_quat[2]
+            left_wheel_ts.transform.rotation.z = wheel_quat[3]
+            left_wheel_ts.transform.rotation.w = wheel_quat[0]
+            transforms.append(left_wheel_ts)
+
+            # Front right wheel
+            right_wheel_ts = TransformStamped()
+            right_wheel_ts.header.stamp = ts
+            right_wheel_ts.header.frame_id = racecar_namespace + "/front_right_hinge"
+            right_wheel_ts.child_frame_id = racecar_namespace + "/front_right_wheel"
+            right_wheel_ts.transform.rotation.x = wheel_quat[1]
+            right_wheel_ts.transform.rotation.y = wheel_quat[2]
+            right_wheel_ts.transform.rotation.z = wheel_quat[3]
+            right_wheel_ts.transform.rotation.w = wheel_quat[0]
+            transforms.append(right_wheel_ts)
+
+        # Single batched broadcast
+        self.br.sendTransform(transforms)
+
+    # Keep old methods for backward compatibility but mark as deprecated
+    def _publish_transforms(self, ts):
+        """Deprecated: Use _publish_all_transforms_batched instead."""
+        self._publish_all_transforms_batched(ts)
 
     def _publish_wheel_transforms(self, ts):
-        for i in range(self.num_agents):
-            racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_wheel_ts = TransformStamped()
-            # Use the current steering angle for wheel orientation, not angular velocity!
-            # The steering angle is stored in drive_msgs[i][0]
-            steering_angle = self.drive_msgs[i][0]
-            racecar_wheel_quat = euler.euler2quat(
-                0.0, 0.0, steering_angle, axes="sxyz"
-            )
-            racecar_wheel_ts.transform.rotation.x = racecar_wheel_quat[1]
-            racecar_wheel_ts.transform.rotation.y = racecar_wheel_quat[2]
-            racecar_wheel_ts.transform.rotation.z = racecar_wheel_quat[3]
-            racecar_wheel_ts.transform.rotation.w = racecar_wheel_quat[0]
-            racecar_wheel_ts.header.stamp = ts
-            racecar_wheel_ts.header.frame_id = racecar_namespace + "/front_left_hinge"
-            racecar_wheel_ts.child_frame_id = racecar_namespace + "/front_left_wheel"
-            self.br.sendTransform(racecar_wheel_ts)
-            racecar_wheel_ts.header.frame_id = racecar_namespace + "/front_right_hinge"
-            racecar_wheel_ts.child_frame_id = racecar_namespace + "/front_right_wheel"
-            self.br.sendTransform(racecar_wheel_ts)
+        """Deprecated: Handled by _publish_all_transforms_batched."""
+        pass
 
     def _publish_laser_transforms(self, ts):
-        for i in range(self.num_agents):
-            racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_scan_ts = TransformStamped()
-            racecar_scan_ts.transform.translation.x = self.scan_distance_to_base_link
-            racecar_scan_ts.transform.rotation.w = 1.0
-            racecar_scan_ts.header.stamp = ts
-            racecar_scan_ts.header.frame_id = racecar_namespace + "/base_link"
-            racecar_scan_ts.child_frame_id = racecar_namespace + "/laser"
-            self.br.sendTransform(racecar_scan_ts)
+        """Deprecated: Handled by _publish_all_transforms_batched."""
+        pass
 
     def publish_lap_times(self):
         if not self.simulation_paused and self.simulation_running:

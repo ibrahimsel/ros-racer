@@ -29,15 +29,23 @@ gym_bridge:
     racecar_drive_topic: "drive"
 
     # transform related
-    scan_distance_to_base_link: 0.0
+    # Match laser position from ego_racecar.xacro (0.275m forward from base_link)
+    scan_distance_to_base_link: 0.275
 
     # laserscan parameters
-    scan_fov: 4.7
+    # Real Hokuyo UST-10LX FOV: 270 degrees = 4.712389 radians
+    scan_fov: 4.712389
     scan_beams: 1080
 
     # map parameters
     map_path: "" # full path to map yaml file (without the extension)
     map_img_ext: "" # extension of the map's image file (most likely .png or .pgm)
 
-    # number of agents to spawn in simulation (should be 1 <= num_agent <= 3)
+    # number of agents to spawn in simulation (supports up to 20 agents)
     num_agent: 3
+
+    # spawn configuration - automatic agent positioning
+    # strategy: "auto" (find free space), "manual" (hardcoded), "grid", "line", "radial"
+    spawn_strategy: "auto"
+    spawn_min_distance: 1.5      # minimum distance between agents (meters)
+    spawn_vehicle_radius: 0.22   # safety radius for collision checking (meters)

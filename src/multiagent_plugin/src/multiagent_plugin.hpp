@@ -22,6 +22,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
+#include <QGroupBox>
 
 namespace multiagent_plugin
 {
@@ -33,11 +34,28 @@ namespace multiagent_plugin
         virtual ~MultiagentPanel() override;
 
     protected:
+        // UI Elements - Race Control
         QPushButton *start_button_;
         QPushButton *pause_button_;
+        QPushButton *reset_button_;
+
+        // UI Elements - Status
+        QLabel *status_indicator_;
+        QLabel *status_label_;
+
+        // UI Elements - Agent Selection
         QComboBox *agent_dropdown_;
+
+        // UI Elements - Lap Times
         QLabel *lap_times_label_;
 
+        // Group Boxes for organization
+        QGroupBox *status_group_;
+        QGroupBox *control_group_;
+        QGroupBox *agent_group_;
+        QGroupBox *lap_group_;
+
+        // ROS Node and Publishers/Subscribers
         rclcpp::Node::SharedPtr node_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr start_publisher_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reset_publisher_;
@@ -45,15 +63,21 @@ namespace multiagent_plugin
         rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr agent_publisher_;
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr lap_times_subscriber_;
 
+        // State tracking
+        bool simulation_running_;
+        bool simulation_paused_;
+
     protected Q_SLOTS:
         void onStartButtonClicked();
         void onResetButtonClicked();
         void onPauseButtonClicked();
         void onAgentSelected(int index);
         void spinSome();
+
     private:
         void updateLapTimesLabel(const std_msgs::msg::String::SharedPtr msg);
-
+        void updateStatusIndicator();
+        void applyStyles();
     };
 
 } // namespace multiagent_plugin

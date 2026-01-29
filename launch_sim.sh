@@ -34,4 +34,4 @@ maximize_rviz() {
 maximize_rviz &
 
 # Launch ROS simulation
-ros2 launch f1tenth_gym_ros gym_bridge_launch.py
+ros2 launch f1tenth_gym_ros gym_bridge_launch.py num_agent:=5
