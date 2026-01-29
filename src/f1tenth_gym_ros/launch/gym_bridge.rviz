@@ -501,7 +501,7 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 643
+  Height: 1040
   Hide Left Dock: false
   Hide Right Dock: true
   MultiagentPanel:
@@ -513,6 +513,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1250
-  X: 860
-  Y: 299
+  Width: 1920
+  X: 0
+  Y: 0

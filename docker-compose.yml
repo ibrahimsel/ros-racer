@@ -52,8 +52,8 @@ services:
   novnc:
     image: theasp/novnc:latest
     environment:
-      - DISPLAY_WIDTH=1280
-      - DISPLAY_HEIGHT=720
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
       - RUN_XTERM=no
       - RUN_FLUXBOX=yes
     ports:

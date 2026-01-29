@@ -46,6 +46,7 @@ RUN apt-get update --fix-missing && \
                        python3-pip \
                        libeigen3-dev \
                        tmux \
+                       wmctrl \
                        ros-humble-rviz2 \
                        ros-humble-rosbridge-server \
                        ros-humble-rmw-cyclonedds-cpp
