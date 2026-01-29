@@ -84,7 +84,6 @@ class LapTimeTracker:
 
 class GymBridge(Node):
     def __init__(self):
-        # TODO: Align lap times with agent spawn locations
         super().__init__("gym_bridge")
 
         self.declare_parameter("racecar_namespace", "racecar")
@@ -99,7 +98,7 @@ class GymBridge(Node):
         self.declare_parameter("num_agent", 3)
         default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                         "maps",
-                                        "Spielberg_map")
+                                        "example_map")
         self.num_agents = self.get_parameter("num_agent").value
         self.start_subscriber = self.create_subscription(
             Bool, 'sim_start', self.start_callback, 10)
@@ -126,7 +125,7 @@ class GymBridge(Node):
             )
         except Exception as e:
             self.get_logger().warn(
-                f'Given map path can not be found. Defaulting to Spielberg_map.')
+                f'Given map path can not be found. Defaulting to example_map.')
             self.env = gym.make(
                 "f110_gym:f110-v0",
                 map=default_map_path,
@@ -158,11 +157,13 @@ class GymBridge(Node):
 
         self.obs, _, self.done, _ = self.env.reset(self.pose_reset_arr)
 
-        # sim physical step timer
-        self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)
-        # topic publishing timer
-        self.timer = self.create_timer(0.004, self.timer_callback)
-        self.lap_time_timer = self.create_timer(0.001, self.publish_lap_times)
+        # Timer rates optimized for smooth simulation:
+        # - Physics: 100 Hz (10ms) - matches typical simulator timestep
+        # - Sensor publish: 40 Hz (25ms) - typical lidar rate, reduces CPU load
+        # - Lap times: 10 Hz (100ms) - UI update rate, no need for 1000 Hz
+        self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)  # 100 Hz physics
+        self.timer = self.create_timer(0.025, self.timer_callback)  # 40 Hz sensor publish
+        self.lap_time_timer = self.create_timer(0.1, self.publish_lap_times)  # 10 Hz lap times
         self.lap_time_publisher = self.create_publisher(
             String, 'lap_times', 10
         )
@@ -221,6 +222,10 @@ class GymBridge(Node):
         self.pose_reset_sub = self.create_subscription(
             PoseWithCovarianceStamped, "/initialpose", self.pose_reset_callback, 10
         )
+
+        # Track last drive message time for each agent to detect stale commands
+        self.last_drive_time = [time.time()] * self.num_agents
+        self.drive_timeout = 0.1  # 100ms timeout - stop car if no command received
 
     def handle_collision(self):
         """Checks for collision and handles if there is any."""
@@ -285,11 +290,11 @@ class GymBridge(Node):
             if self.agent_disqualified[active_racecar]:
                 self.drive_msgs[active_racecar][0] = 0.0
                 self.drive_msgs[active_racecar][1] = 0.0
-                self.racecar_drive_published = True
                 return
 
             self.drive_msgs[active_racecar][0] = drive_msg.drive.steering_angle
             self.drive_msgs[active_racecar][1] = drive_msg.drive.speed
+            self.last_drive_time[active_racecar] = current_time
             self.racecar_drive_published = True
         except IndexError as i:
             if abs(current_time - self.last_log_time) >= 5.0:
@@ -306,26 +311,40 @@ class GymBridge(Node):
 
     def drive_timer_callback(self):
         if self.simulation_running and not self.simulation_paused:
-            if self.racecar_drive_published:
-                self.obs, _, self.done, _ = self.env.step(self.drive_msgs)
-                self.racecar_drive_published = False
-                for agent_idx in range(self.num_agents):
-                    self.handle_collision()
-                    if self.is_lap_completed(agent_idx):
-                        self.lap_time_trackers[agent_idx].reset(restart=True)
-                        completion_time = self.lap_time_trackers[agent_idx].get_elapsed_time(
-                        )
-                        if completion_time > 5.0:
-                            self.get_logger().info(
-                                f"Agent {agent_idx + 1} completed a lap with time: {self.lap_time_trackers[agent_idx].get_elapsed_time():.4f}")
+            current_time = time.time()
+
+            # Check for stale drive commands and stop cars that haven't received commands
+            for i in range(self.num_agents):
+                if current_time - self.last_drive_time[i] > self.drive_timeout:
+                    # No recent command - gradually slow down the car
+                    self.drive_msgs[i][1] *= 0.9  # Reduce speed by 10%
+                    if abs(self.drive_msgs[i][1]) < 0.1:
+                        self.drive_msgs[i][1] = 0.0
+                        self.drive_msgs[i][0] = 0.0
+
+            # ALWAYS step physics - this is critical for smooth simulation!
+            # Don't wait for drive messages - use last known commands
+            self.obs, _, self.done, _ = self.env.step(self.drive_msgs)
+
+            # Handle collision detection (once per step, not per agent)
+            self.handle_collision()
+
+            # Check lap completion for each agent
+            for agent_idx in range(self.num_agents):
+                if self.is_lap_completed(agent_idx):
+                    self.lap_time_trackers[agent_idx].reset(restart=True)
+                    completion_time = self.lap_time_trackers[agent_idx].get_elapsed_time()
+                    if completion_time > 5.0:
+                        self.get_logger().info(
+                            f"Agent {agent_idx + 1} completed a lap with time: {self.lap_time_trackers[agent_idx].get_elapsed_time():.4f}")
 
     def timer_callback(self):
         if self.simulation_running and not self.simulation_paused:
+            ts = self.get_clock().now().to_msg()
+
+            # Publish scans for each agent
             for i in range(self.num_agents):
                 racecar_namespace = self.racecar_namespace + str(i + 1)
-                ts = self.get_clock().now().to_msg()
-                self._publish_name_markers(ts)
-                # publish scans
                 scan = LaserScan()
                 scan.header.stamp = ts
                 scan.header.frame_id = racecar_namespace + "/laser"
@@ -337,11 +356,12 @@ class GymBridge(Node):
                 scan.ranges = list(self.obs["scans"][i])
                 self.scan_publishers[i].publish(scan)
 
-                # publish transforms and odom
-                self._publish_odom(ts)
-                self._publish_transforms(ts)
-                self._publish_laser_transforms(ts)
-                self._publish_wheel_transforms(ts)
+            # Publish transforms, odom, and markers ONCE (they loop internally)
+            self._publish_odom(ts)
+            self._publish_transforms(ts)
+            self._publish_laser_transforms(ts)
+            self._publish_wheel_transforms(ts)
+            self._publish_name_markers(ts)
 
     def pose_reset_callback(self, pose_msg):
         rx = pose_msg.pose.pose.position.x
@@ -436,8 +456,11 @@ class GymBridge(Node):
         for i in range(self.num_agents):
             racecar_namespace = self.racecar_namespace + str(i + 1)
             racecar_wheel_ts = TransformStamped()
+            # Use the current steering angle for wheel orientation, not angular velocity!
+            # The steering angle is stored in drive_msgs[i][0]
+            steering_angle = self.drive_msgs[i][0]
             racecar_wheel_quat = euler.euler2quat(
-                0.0, 0.0, self.obs["ang_vels_z"][i], axes="sxyz"
+                0.0, 0.0, steering_angle, axes="sxyz"
             )
             racecar_wheel_ts.transform.rotation.x = racecar_wheel_quat[1]
             racecar_wheel_ts.transform.rotation.y = racecar_wheel_quat[2]

@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "name": "gap_follower_broken",
+    "description": "Gap Follower - BROKEN BUILD (Rollback Demo)",
+    "content_type": "stack/archive",
+    "version": "4.0.0"
+  },
+  "launch": {
+    "url": "http://artifact-server:9090/gap_follower_broken.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "b671f61703a7f67e1ca2b1f64f9c116b52b6ab7475c18f1c129b51e3f5930895",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}

@@ -8,16 +8,20 @@ RUN apt-get update --fix-missing && apt-get install -y \
     python3-pip \
     python3-colcon-common-extensions \
     python3-vcstool \
-    ros-humble-ackermann-msgs
+    ros-humble-ackermann-msgs \
+    ros-humble-rmw-cyclonedds-cpp \
+    git
 
-COPY ./muto.repos ./muto.repos
-COPY ./launch ./launch
-COPY ./config ./config
-RUN mkdir -p ./src && vcs import src < muto.repos
-
+    
+RUN git clone https://github.com/ibrahimsel/muto.git -b test/e2e
+WORKDIR '/edge/muto'
+COPY ./muto.repos /edge/muto/muto.repos
+RUN vcs import src < muto.repos 
 RUN source /opt/ros/humble/setup.bash && \
+    rosdep update && \
     rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
-    colcon build
+    colcon build && \
+    cd src/agent/symphony-sdk-python && pip3 install -e .
     
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

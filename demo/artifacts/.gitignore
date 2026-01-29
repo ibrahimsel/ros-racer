@@ -1,0 +1,3 @@
+# Artifact tar.gz files are generated at runtime by the demo script
+# Do not commit them to the repository
+*.tar.gz

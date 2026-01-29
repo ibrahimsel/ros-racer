@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "name": "gap_follower_balanced",
+    "description": "Gap Follower - AGGRESSIVE BUILD (The Racer) - Fast and responsive",
+    "content_type": "stack/archive",
+    "version": "4.0.0"
+  },
+  "launch": {
+    "url": "http://artifact-server:9090/gap_follower_balanced.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "818f7b87eee40fcba02aeece51479e9ab53b2365a6dc0114cf696974363646ea",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}

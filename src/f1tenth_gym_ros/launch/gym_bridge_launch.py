@@ -38,8 +38,6 @@ import yaml
 from launch import LaunchDescription
 from launch.substitutions import Command
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -54,7 +52,7 @@ def generate_launch_description():
     map_path = config_dict["gym_bridge"]["ros__parameters"]["map_path"]
     default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                     "maps",
-                                    "Spielberg_map")
+                                    "example_map")
     
     print(f"Starting with {num_agents} agents.")
     gym_bridge_node = Node(
@@ -100,12 +98,6 @@ def generate_launch_description():
             )
         )
 
-    rosbridge_launch = IncludeLaunchDescription(
-        os.path.join(get_package_share_directory('rosbridge_server'),
-                     'launch',
-                     'rosbridge_websocket_launch.xml')
-    )
-
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",
@@ -146,13 +138,6 @@ def generate_launch_description():
         ],
     )
 
-    gap_follow = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-        os.path.join(get_package_share_directory('f1tenth_gym_ros'), 'launch', 'gap_follow.launch.py'))
-    )
-    ld.add_action(gap_follow)
-
-
     # finalize
     ld.add_action(rviz_node)
     ld.add_action(gym_bridge_node)
@@ -160,5 +145,4 @@ def generate_launch_description():
     ld.add_action(map_server_node)
     for i in robot_state_publishers:
         ld.add_action(i)
-    # ld.add_action(rosbridge_launch)
     return ld

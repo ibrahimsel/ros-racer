@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "name": "gap_follower_aggressive",
+    "description": "Gap Follower - ATTACK MODE (The Overtaker) - Maximum performance!",
+    "content_type": "stack/archive",
+    "version": "4.0.0"
+  },
+  "launch": {
+    "url": "http://artifact-server:9090/gap_follower_aggressive.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "f204453d9a90b107f38544762e9b16bc2df9f197153d690afb7d63b701013a8b",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}
