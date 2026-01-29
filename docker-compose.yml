@@ -57,7 +57,7 @@ services:
       - RUN_XTERM=no
       - RUN_FLUXBOX=yes
     ports:
-      - "8080:8080"
+      - "18080:8080"
     networks:
       - x11
     healthcheck:
