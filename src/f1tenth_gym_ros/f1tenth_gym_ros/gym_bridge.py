@@ -98,7 +98,7 @@ class GymBridge(Node):
         self.declare_parameter("num_agent", 3)
         default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                         "maps",
-                                        "Spielberg_map")
+                                        "example_map")
         self.num_agents = self.get_parameter("num_agent").value
         self.start_subscriber = self.create_subscription(
             Bool, 'sim_start', self.start_callback, 10)
@@ -125,7 +125,7 @@ class GymBridge(Node):
             )
         except Exception as e:
             self.get_logger().warn(
-                f'Given map path can not be found. Defaulting to Spielberg_map.')
+                f'Given map path can not be found. Defaulting to example_map.')
             self.env = gym.make(
                 "f110_gym:f110-v0",
                 map=default_map_path,

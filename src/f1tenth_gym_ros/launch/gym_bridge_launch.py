@@ -52,7 +52,7 @@ def generate_launch_description():
     map_path = config_dict["gym_bridge"]["ros__parameters"]["map_path"]
     default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                     "maps",
-                                    "Spielberg_map")
+                                    "example_map")
     
     print(f"Starting with {num_agents} agents.")
     gym_bridge_node = Node(
