@@ -45,14 +45,49 @@ SYMPHONY_API_URL="http://localhost:${PORT_SYMPHONY_API}/v1alpha2/"
 # Container runtime (docker or podman)
 CONTAINER_RUNTIME=""
 
-# Detect container runtime (prefer docker if both are available)
+# Detect container runtime - if both available, let user choose
 detect_container_runtime() {
+    local has_docker=false
+    local has_podman=false
+    
     if command -v docker &> /dev/null; then
+        has_docker=true
+    fi
+    
+    if command -v podman &> /dev/null; then
+        has_podman=true
+    fi
+    
+    # Both available - let user choose
+    if $has_docker && $has_podman; then
+        echo ""
+        echo -e "${YELLOW}Both Docker and Podman are available.${NC}"
+        echo -e "${WHITE}Which container runtime would you like to use?${NC}"
+        echo ""
+        echo -e "  ${GREEN}1)${NC} Docker"
+        echo -e "  ${GREEN}2)${NC} Podman"
+        echo ""
+        echo -ne "${WHITE}Enter your choice [1-2] (default: 1): ${NC}"
+        read -r choice
+        
+        case "$choice" in
+            2)
+                CONTAINER_RUNTIME="podman"
+                ;;
+            *)
+                CONTAINER_RUNTIME="docker"
+                ;;
+        esac
+        return 0
+    # Only docker available
+    elif $has_docker; then
         CONTAINER_RUNTIME="docker"
         return 0
-    elif command -v podman &> /dev/null; then
+    # Only podman available
+    elif $has_podman; then
         CONTAINER_RUNTIME="podman"
         return 0
+    # Neither available
     else
         return 1
     fi
