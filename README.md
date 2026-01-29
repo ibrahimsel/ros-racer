@@ -13,256 +13,353 @@
 
 <!-- quick links: local links (one line max) -->
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#running-the-demo">Demo</a> •
-  <a href="#documentation">Documentation</a> •
+  <a href="docs/quickstart.md">Quick Start</a> •
+  <a href="docs/quickstart.md#running-the-demo">Demo</a> •
   <a href="#support">Need Help?</a>
 </p>
 
 <br>
 
-![Demo](./assets/demo.png)
 
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Quick Start](#quick-start)
-- [Running the Demo](#running-the-demo)
-- [Installation](#installation)
-  - [Docker / Podman](#docker--podman)
-  - [Native on Ubuntu](#native-on-ubuntu)
-- [Configuration](#configuration)
-- [ROS Topics](#ros-topics)
-- [Troubleshooting](#troubleshooting)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Eclipse Muto Integration](#eclipse-muto-integration)
+- [Key Scenarios](#key-scenarios)
+- [Technology Stack](#technology-stack)
+- [Benefits Demonstrated](#benefits-demonstrated)
+- [Getting Started](#getting-started)
+- [Learn More](#learn-more)
 - [Contributing](#contributing)
+- [Support](#support)
 - [License and Copyright](#license-and-copyright)
 
-## Introduction
+## Overview
 
-The **Eclipse SDV Blueprints** project is a collaborative initiative led by Eclipse SDV members to bring the "software defined vehicle" concepts to life. A crucial aspect of each blueprint is to ensure users can easily reproduce it on their own. This requires well-written and highly clear documentation. Users can utilize blueprints as they are, for inspiration, or as a foundation to customize and meet their specific needs.
+The **ROS Racer Blueprint** is an Eclipse Software Defined Vehicle (SDV) demonstration that showcases how cloud-native orchestration and over-the-air (OTA) software delivery can be applied to autonomous racing vehicles. This blueprint brings together several Eclipse SDV technologies to create a realistic, multi-agent autonomous racing simulation that demonstrates the future of vehicle software management.
 
-**ROS Racer Blueprint** is a ROS-based showcase where multi-agent autonomous racers running [F1TENTH](https://f1tenth.org/) software are orchestrated and managed by an Eclipse SDV software stack.
+At its core, this project uses the [F1TENTH](https://f1tenth.org/) autonomous racing platform combined with [Eclipse Muto](https://github.com/eclipse-muto/muto) - an adaptive framework for dynamically composable, model-driven software stacks in ROS 2 environments. The blueprint demonstrates how multiple autonomous racecars can be orchestrated, updated, and managed in real-time through both direct ROS topic communication and cloud-based orchestration via Eclipse Symphony.
 
-This project provides a ROS 2 communication bridge (inspired by [f1tenth_gym_ros](https://github.com/f1tenth/f1tenth_gym_ros)) with multi-agent support (up to 4 vehicles) for the F1TENTH gym environment. It is designed for use with [Eclipse Muto](https://projects.eclipse.org/projects/automotive.muto), an adaptive framework and runtime platform for dynamically composable model-driven software stacks for ROS.
+### Key Capabilities
 
-## Quick Start
+- **Multi-Agent Simulation**: Three autonomous racecars running independently with the F1TENTH gym environment
+- **OTA Software Updates**: Zero-downtime deployment of new driving algorithms to running vehicles
+- **Automatic Rollback**: Self-healing fleet that automatically reverts failed deployments
+- **Fleet Heterogeneity**: Deploy different algorithms to individual vehicles based on role or conditions
+- **Dual Orchestration Modes**: 
+  - Direct ROS topic-based deployment (Muto native)
+  - Cloud-native orchestration via Eclipse Symphony
+- **Visual Feedback**: Real-time RViz visualization accessible through web browser (noVNC)
 
-The fastest way to get started is using Docker or Podman:
+---
 
-```bash
-# Clone the repository
-git clone https://github.com/eclipse-sdv-blueprints/ros-racer.git
-cd ros-racer
+## Architecture
 
-# Start the simulation
-docker compose up -d --build
+The ROS Racer Blueprint implements a sophisticated multi-layer architecture that separates simulation, edge compute, orchestration, and artifact management concerns.
 
-# Open in browser
-# http://localhost:18080/vnc.html
+### High-Level Architecture Diagram
+
+
+![Architecture](./docs/assets/introduction.png)
+
+### Component Details
+
+#### 1. **Simulation Layer**
+
+The simulation layer is built on the F1TENTH Gym environment with ROS 2 integration:
+
+- **F1TENTH Gym Simulator (`sim` container)**
+  - Provides physics-based simulation of 1/10th scale autonomous racecars
+  - Supports multi-agent scenarios with up to 3 vehicles
+  - Publishes sensor data (`/racecar*/scan`, `/racecar*/odom`)
+  - Subscribes to control commands (`/racecar*/drive`)
+  - Runs RViz for 3D visualization
+  - Uses CycloneDDS for ROS 2 middleware (low-latency, efficient)
+
+- **noVNC Visualization**
+  - Browser-accessible VNC server (no client installation required)
+  - Provides real-time view of RViz visualization
+  - Accessible at `http://localhost:8080/vnc.html`
+  - Displays all three vehicles on the Spielberg race track
+
+#### 2. **Edge Layer - Eclipse Muto Stack**
+
+Each autonomous vehicle (racecar1, racecar2, racecar3) runs a complete Eclipse Muto stack in its own container. This represents the edge compute environment that would exist on a real vehicle.
+
+##### Eclipse Muto Components
+
+**Muto Agent**
+- Handles cloud connectivity and external orchestration
+- **MQTT Gateway**: Bidirectional bridge to cloud MQTT brokers (Eclipse Ditto, Symphony)
+- **Commands Plugin**: Enables remote execution of ROS commands (topic list, node info, parameter get, etc.)
+- **Symphony Provider**: Integration point for Eclipse Symphony orchestration
+- Listens on vehicle-specific topics (e.g., `/racecar1_muto/stack`)
+
+**Muto Core**
+- **Digital Twin**: Maintains a synchronized representation of vehicle state
+- Publishes vehicle attributes, status, and capabilities
+- Integration with Eclipse Ditto for cloud-side digital twin management
+
+**Muto Composer**
+- The heart of dynamic software composition and OTA updates
+- **Main Composer**: Orchestrates the full stack lifecycle
+  - Receives stack definitions via ROS topics or MQTT
+  - Coordinates provision → build → launch sequence
+  - Manages workspace states and transitions
+  - Implements automatic rollback on failure
+  
+- **Provision Plugin**: 
+  - Downloads stack packages from artifact server (HTTP)
+  - Validates checksums (SHA256)
+  - Extracts archives to workspace directories
+  - Manages `~/.muto/workspaces/{stack_name}/` structure
+
+- **Compose Plugin**:
+  - Builds ROS 2 workspaces using `colcon build`
+  - Resolves dependencies via `rosdep`
+  - Creates isolated build environments per stack
+
+- **Launch Plugin**:
+  - Starts/stops ROS nodes based on stack launch files
+  - Monitors node health and lifecycle
+  - Implements graceful shutdown and cleanup
+  - Detects failures and triggers rollback
+
+**Dynamic Workspaces**
+- Each deployed stack creates a workspace under `~/.muto/workspaces/`
+- Workspaces are self-contained ROS 2 packages with:
+  - Source code (extracted from .tar.gz)
+  - Build artifacts (colcon build output)
+  - Launch scripts (e.g., `run.sh`)
+  - Configuration files
+- Multiple workspaces can coexist; Composer manages which is active
+
+#### 3. **Service Layer**
+
+**Artifact Server**
+- Simple Python HTTP server serving on port 9090
+- Hosts stack packages as `.tar.gz` archives:
+  - `gap_follower_conservative.tar.gz`
+  - `gap_follower_balanced.tar.gz`
+  - `gap_follower_aggressive.tar.gz`
+  - `gap_follower_broken.tar.gz` (intentionally broken for rollback demo)
+- Each package contains ROS 2 workspace with driving algorithm implementation
+- Checksums in stack definitions ensure integrity
+
+#### 4. **Cloud/Orchestration Layer (Optional)**
+
+**Eclipse Symphony**
+- Cloud-native orchestration platform for edge deployments
+- **Symphony API**: REST API for managing solutions, instances, targets
+- **Symphony Portal**: Web dashboard for fleet visualization
+- **MQTT Bridge**: Mosquitto broker connects Symphony to Muto agents
+- **Abstraction Model**:
+  - **Solutions**: Versioned software packages (wraps Muto stacks)
+  - **Targets**: Represents edge devices (vehicles)
+  - **Instances**: Links solutions to targets, triggering deployment
+
+---
+
+## Eclipse Muto Integration
+
+[Eclipse Muto](https://github.com/eclipse-muto/muto) is the cornerstone of this blueprint, providing the intelligent edge runtime that enables dynamic, cloud-native software management for ROS 2 systems.
+
+### What is Eclipse Muto?
+
+Eclipse Muto is an **adaptive framework and runtime platform** for building dynamically composable, model-driven software stacks in ROS-based robotic systems. It brings cloud-native DevOps practices to the edge, enabling:
+
+- **Dynamic Composition**: Load, build, and launch ROS packages at runtime without redeployment
+- **OTA Updates**: Zero-downtime software updates via stack definitions
+- **Automatic Rollback**: Self-healing behavior when deployments fail
+- **Digital Twin Integration**: Synchronized cloud-side representation of edge devices
+- **Multi-Protocol Connectivity**: Support for MQTT, HTTP, and ROS 2 DDS
+- **Model-Driven**: Stack definitions as declarative JSON/YAML
+
+### Muto in the ROS Racer Blueprint
+
+In this blueprint, Muto transforms traditional static ROS deployments into a dynamic, cloud-managed system:
+
+#### 1. **Stack-Based Deployment Model**
+
+Instead of baking algorithms into container images, Muto uses **stack definitions** - lightweight JSON descriptors:
+
+```json
+{
+  "metadata": {
+    "name": "gap_follower_balanced",
+    "version": "1.1.0",
+    "content_type": "stack/archive"
+  },
+  "launch": {
+    "url": "http://artifact-server:9090/gap_follower_balanced.tar.gz",
+    "properties": {
+      "algorithm": "sha256",
+      "checksum": "a1b2c3d4...",
+      "launch_file": "run.sh",
+      "flatten": true
+    }
+  }
+}
 ```
 
-## Running the Demo
+This definition tells Muto:
+- What to download (`url`)
+- How to verify it (`checksum`)
+- How to launch it (`launch_file`)
+- Metadata for versioning and tracking
 
-The project includes an interactive demo that showcases Eclipse Muto's OTA deployment capabilities:
+#### 2. **OTA Deployment Flow**
 
-```bash
-./run-demo.sh
+When a stack is deployed, Muto executes this sequence:
+
+```
+1. Stack Definition Received (ROS topic or MQTT)
+   └─> Composer validates and queues
+
+2. Provisioning Phase
+   └─> Provision Plugin downloads .tar.gz from artifact server
+   └─> Validates SHA256 checksum
+   └─> Extracts to ~/.muto/workspaces/{stack_name}/
+
+3. Build Phase
+   └─> Compose Plugin runs 'colcon build'
+   └─> Resolves dependencies
+   └─> Creates install/ directory with ROS 2 artifacts
+
+4. Launch Phase
+   └─> Launch Plugin stops previous stack (graceful shutdown)
+   └─> Sources new workspace setup.bash
+   └─> Executes launch_file (e.g., run.sh)
+   └─> Monitors node health
+
+5. Validation
+   └─> If nodes crash or fail to start within timeout:
+       └─> Automatic rollback to previous working stack
+   └─> If successful:
+       └─> New stack becomes active
+       └─> Digital twin updated with new state
 ```
 
-This guided demo walks you through:
+#### 3. **Zero-Downtime Updates**
 
-| Phase | Description |
-|-------|-------------|
-| **Infrastructure Setup** | Starts F1TENTH simulation with Muto edge containers |
-| **Direct Deployment** | Deploy algorithms via ROS topics (Muto native) |
-| **OTA Updates** | Seamless zero-downtime updates between algorithm versions |
-| **Automatic Rollback** | Recovery from failed deployments |
-| **Fleet Management** | Deploy different algorithms to individual vehicles |
+Muto achieves zero-downtime by:
+- Building new workspaces alongside running ones (no interruption)
+- Only switching to the new stack after successful build
+- Gracefully terminating old nodes before starting new ones
+- Maintaining state continuity through ROS 2 parameter persistence
 
-For detailed instructions, see the [Demo Documentation](demo/README.md).
+#### 4. **Automatic Rollback**
 
-## Installation
+The `gap_follower_broken` stack demonstrates Muto's self-healing by intentionally deploying a broken algorithm:
 
-### Supported Systems
+#### 5. **Fleet Management**
 
-- Ubuntu 22.04 (native or containerized)
-- macOS (via Docker/Podman)
-- Windows (via Docker/Podman with WSL2)
+Muto's namespace-based architecture enables fleet-wide or targeted deployments:
 
-### Docker / Podman
+Each vehicle independently:
+ - Receives stack on its /{vehicle_name}_muto/stack topic
+ - Executes full deployment pipeline
+ - Manages its own workspace state
+ - Reports status via digital twin
 
-**Prerequisites:**
-- [Docker](https://docs.docker.com/install/) or [Podman](https://podman.io/getting-started/installation) with compose support
-- Web browser
+#### 6. **Digital Twin Synchronization**
 
-**Steps:**
+Muto Core maintains a digital twin for each vehicle:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/eclipse-sdv-blueprints/ros-racer.git
-   cd ros-racer
-   ```
+- **Attributes**: Vehicle ID, capabilities, hardware specs
+- **State**: Current stack, version, deployed workspaces
+- **Telemetry**: CPU, memory, network status
+- **Events**: Deployment history, rollback events, errors
 
-2. Start the services:
-   ```bash
-   docker compose up -d --build
-   ```
+This twin synchronizes with Eclipse Ditto (cloud-side digital twin platform), enabling:
+- Fleet-wide visibility into deployment status
+- Historical audit trail
+- Conditional deployments based on vehicle state
+- Integration with Symphony for orchestration
 
-   This starts:
-   | Service | Description |
-   |---------|-------------|
-   | **novnc** | Web-based VNC viewer (port 18080) |
-   | **sim** | F1TENTH gym simulation with RViz |
-   | **artifact-server** | HTTP server for stack packages |
-   | **edge, edge2, edge3** | Eclipse Muto edge devices (racecars) |
+#### 7. **Multi-Protocol Gateway**
 
-3. Open the simulation in your browser:
-   ```
-   http://localhost:18080/vnc.html
-   ```
+Muto's MQTT Gateway bridges multiple communication domains:
 
-4. If RViz doesn't appear, restart the sim service:
-   ```bash
-   docker compose restart sim
-   ```
-
-### Native on Ubuntu
-
-**Prerequisites:**
-- ROS 2 Humble ([installation guide](https://docs.ros.org/en/humble/Installation.html))
-- F1TENTH Gym:
-  ```bash
-  cd $HOME
-  git clone https://github.com/f1tenth/f1tenth_gym
-  cd f1tenth_gym && pip3 install -e .
-  ```
-
-**Steps:**
-
-1. Clone into your colcon workspace:
-   ```bash
-   cd ~/ros2_ws/src
-   git clone https://github.com/eclipse-sdv-blueprints/ros-racer.git
-   ```
-
-2. Configure the map path in `src/f1tenth_gym_ros/config/sim.yaml`:
-   ```yaml
-   map_path: /home/<user>/ros2_ws/src/ros-racer/src/f1tenth_gym_ros/maps/levine
-   ```
-   > Note: Do not include the file extension. Set `map_img_ext` separately if using `.pgm` instead of `.png`.
-
-3. Install dependencies and build:
-   ```bash
-   source /opt/ros/humble/setup.bash
-   cd ~/ros2_ws
-   rosdep install --from-path src --ignore-src -r -y
-   colcon build --symlink-install
-   ```
-
-4. Launch the simulation:
-   ```bash
-   source /opt/ros/humble/setup.bash
-   source install/local_setup.bash
-   ros2 launch f1tenth_gym_ros gym_bridge_launch.py
-   ```
-
-> **Tip:** For remote systems, you'll need [X11 forwarding](https://unix.stackexchange.com/questions/12755/how-to-forward-x-over-ssh-to-run-graphics-applications-remotely) to view RViz.
-
-## Configuration
-
-The simulation configuration is at `src/f1tenth_gym_ros/config/sim.yaml`:
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `map_path` | Full path to map file (without extension) | `levine` |
-| `map_img_ext` | Map image extension | `.png` |
-| `num_agent` | Number of racecars (1-4) | `3` |
-| `racecar_namespace` | Base namespace for vehicles | `racecar` |
-| `scan_topic` | LiDAR scan topic name | `scan` |
-| `odom_topic` | Odometry topic name | `odom` |
-| `drive_topic` | Drive command topic name | `drive` |
-
-## ROS Topics
-
-### Published by Simulation
-
-| Topic | Type | Description |
-|-------|------|-------------|
-| `/{ns}{i}/scan` | `sensor_msgs/LaserScan` | LiDAR scan for vehicle i |
-| `/{ns}{i}/odom` | `nav_msgs/Odometry` | Odometry for vehicle i |
-| `/map` | `nav_msgs/OccupancyGrid` | Environment map |
-
-Where `{ns}` is the `racecar_namespace` parameter and `{i}` is the vehicle number (1-4).
-
-### Subscribed by Simulation
-
-| Topic | Type | Description |
-|-------|------|-------------|
-| `/{ns}{i}/drive` | `ackermann_msgs/AckermannDriveStamped` | Drive commands for vehicle i |
-| `/initialpose` | `geometry_msgs/PoseWithCovarianceStamped` | Reset vehicle pose |
-
-**Important:** When publishing drive commands, set `header.frame_id` to `{ns}{i}/base_link` (e.g., `racecar1/base_link`).
-
-Example drive command:
-```bash
-ros2 topic pub racecar1/drive ackermann_msgs/msg/AckermannDriveStamped \
-  "{header: {frame_id: 'racecar1/base_link'}, drive: {speed: 1.0, steering_angle: 0.5}}"
+```
+Cloud (MQTT) ←→ Muto Agent ←→ ROS 2 (DDS)
+                    ↕
+              Digital Twin (Ditto)
+                    ↕
+           Symphony (Orchestration)
 ```
 
-## Troubleshooting
+This enables:
+- Remote command execution via MQTT
+- Stack deployment from cloud or local ROS topics
+- Telemetry streaming to cloud
+- Symphony-based orchestration
 
-<details>
-<summary><strong>RViz doesn't open or crashes</strong></summary>
+---
 
-If using Docker and you see Qt/xcb errors:
-```
-sim-1 | [rviz2-1] qt.qpa.xcb: could not connect to display novnc:0.0
-```
+## Key Scenarios
 
-Solution: Restart the compose services:
-```bash
-docker compose restart
-```
-</details>
+### Scenario 1: Initial Deployment
+Deploy a conservative driving algorithm to all three vehicles for initial testing.
 
-<details>
-<summary><strong>"Invalid frame ID 'map'" warnings</strong></summary>
+### Scenario 2: Progressive OTA Updates
+Incrementally increase performance: conservative → balanced → aggressive, demonstrating seamless transitions.
 
-This is normal during startup while TF buffers populate. Wait up to a minute for transforms to stabilize.
-</details>
+### Scenario 3: Automatic Rollback
+Deploy a broken algorithm and watch Muto automatically recover to the previous version.
 
-<details>
-<summary><strong>Map not visible</strong></summary>
+### Scenario 4: Heterogeneous Fleet
+Assign different algorithms to vehicles based on their role (lead car = conservative, middle = aggressive, rear = balanced).
 
-Verify `map_path` in `sim.yaml` is correct:
-- Use the full absolute path
-- Do not include the file extension
-- Set `map_img_ext` if using `.pgm` instead of `.png`
-</details>
+### Scenario 5: Symphony Orchestration
+Use Eclipse Symphony's REST API to manage deployments at scale, demonstrating cloud-native fleet management.
 
-<details>
-<summary><strong>Racecars visible but not moving</strong></summary>
+---
 
-1. Ensure you're publishing to the correct topics (e.g., `/racecar1/drive`)
-2. Verify `header.frame_id` is set correctly (e.g., `racecar1/base_link`)
-3. Check that drive message speed and steering values are non-zero
-</details>
+## Technology Stack
 
-<details>
-<summary><strong>Changes not reflected after rebuild</strong></summary>
+- **ROS 2 Humble**: Robot Operating System for autonomous vehicle software
+- **Eclipse Muto**: Adaptive framework for dynamic ROS stack composition
+- **Eclipse Symphony**: Cloud-native orchestration platform (optional)
+- **Eclipse Ditto**: Digital twin platform for IoT/edge devices
+- **F1TENTH Gym**: High-fidelity autonomous racing simulator
+- **CycloneDDS**: High-performance DDS implementation for ROS 2
+- **Python 3.11**: Stack deployment scripts and HTTP server
+- **Docker/Podman**: Container runtime for edge and simulation environments
+- **MQTT (Mosquitto)**: Lightweight messaging for cloud-edge communication
+- **noVNC**: Browser-based VNC for accessible visualization
 
-For Docker:
-```bash
-docker compose down
-docker compose up -d --build
-```
+---
 
-For native installation:
-```bash
-colcon build --symlink-install
-source install/local_setup.bash
-```
-</details>
+## Benefits Demonstrated
+
+1. **Agility**: Deploy new algorithms in minutes, not hours
+2. **Safety**: Automatic rollback prevents fleet-wide failures
+3. **Flexibility**: Mix different algorithms across fleet for optimal performance
+4. **Observability**: Real-time state via digital twins
+5. **Cloud-Native**: Standards-based orchestration (Symphony, MQTT, ROS 2)
+6. **Developer Productivity**: Test locally, deploy identically to edge
+7. **Zero-Downtime**: Seamless transitions between software versions
+
+---
+
+## Getting Started
+
+For detailed instructions, see [Quickstart](docs/quickstart.md) and [demo/README.md](demo/README.md).
+
+---
+
+## Learn More
+
+- **Eclipse Muto**: https://github.com/eclipse-muto/muto
+- **Eclipse SDV**: https://sdv.eclipse.org/
+- **F1TENTH**: https://f1tenth.org/
+- **Eclipse Symphony**: https://github.com/eclipse-symphony/symphony
+- **Eclipse Ditto**: https://www.eclipse.org/ditto/
+
+---
+
 
 ## Contributing
 
