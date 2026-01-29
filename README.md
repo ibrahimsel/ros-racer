@@ -42,11 +42,10 @@ This is a ROS communication bridge inspired from [f1tenth_gym_ros](https://githu
 
 # Installation
 
-**Supported Systems:**
+**Supported (Tested) Systems:**
 
-- Ubuntu 20.04 native with ROS2 humble
 - Ubuntu 22.04 native with ROS2 Humble
-- Docker
+- Docker or Podman
 
 ## With Docker:
 
@@ -58,26 +57,45 @@ This is a ROS communication bridge inspired from [f1tenth_gym_ros](https://githu
 
 1. Clone this repo
 ```bash
-git clone https://gitlab.eteration.com/composiv/eclipse-muto/multi-agent/muto-multiagent-simulation.git
-cd muto-multiagent-simulation
+git clone https://github.com/eclipse-sdv-blueprints/ros-racer.git
+cd ros-racer
 ```
 
 
 2. Run
-```
+```bash
 docker compose up --build
 ```
+
+This starts the following services:
+- **novnc**: Web-based VNC for viewing the simulation in your browser
+- **sim**: The F1TENTH gym simulation with RViz
+- **artifact-server**: HTTP server for serving stack packages
+- **edge, edge2, edge3**: Eclipse Muto edge devices representing the racecars
 
 
 3. Visit `http://localhost:8080/vnc.html`
 
 4. If you don't see the RViz window at your browser, something went wrong. Run `docker compose restart sim` then it should be fine
 
+## Running the Demo
+
+The project includes an interactive demo that showcases Eclipse Muto's OTA deployment capabilities:
+
+```bash
+./run-demo.sh
+```
+
+This demonstrates two deployment methods:
+1. **Direct ROS topic deployment** (Muto native)
+2. **Eclipse Symphony orchestration** (This feature is currently commented out for some fixes. Will be added back soon)
+
+For detailed demo instructions, see [demo/README.md](demo/README.md).
+
 ## Native on Ubuntu
 
 **Install the following dependencies:**
 - **ROS 2** Follow the instructions [here](https://docs.ros.org/en/humble/Installation.html) to install ROS 2 humble.
-- **ROS 2** Follow the instructions [here](https://docs.ros.org/en/humble/Installation.html) to install ROS 2 Humble.
 - **F1TENTH Gym**
   ```bash
   cd $HOME
@@ -89,10 +107,10 @@ docker compose up --build
 - Clone the repo into your colcon workspace if you haven't already:
   ```bash
   cd ~/path_to_ws/src
-  git clone https://gitlab.eteration.com/composiv/eclipse-muto/multi-agent/muto-multiagent-simulation.
+  git clone https://github.com/eclipse-sdv-blueprints/ros-racer.git
   ```
 - Update correct parameter for path to map file:
-  Go to `sim.yaml` [/path_to_ws/src/f1tenth_gym_ros/config/sim.yaml](https://gitlab.eteration.com/composiv/eclipse-muto/multi-agent/muto-multiagent-simulation/-/blob/main/src/f1tenth_gym_ros/config/sim.yaml) in your cloned repo, change the `map_path` parameter to point to the correct location. It should be `~/path_to_ws/src/f1tenth_gym_ros/src/f1tenth_gym_ros/maps/levine'`. You could also use map of your choosing instead of levine. Make sure you specify the map image file extension via `map_img_ext`.  Don't specify the extension of yaml file on `map_path` parameter.
+  Go to `sim.yaml` in `src/f1tenth_gym_ros/config/sim.yaml` in your cloned repo, change the `map_path` parameter to point to the correct location. It should be `~/path_to_ws/src/ros-racer/src/f1tenth_gym_ros/maps/levine`. You could also use a map of your choosing instead of levine. Make sure you specify the map image file extension via `map_img_ext`. Don't specify the extension of the yaml file in the `map_path` parameter.
 
 - Install dependencies with rosdep then build:
   ```bash
@@ -110,13 +128,13 @@ docker compose up --build
 
 # Quickstart:
 ## Configuring the simulation
-- The configuration file for the simulation is at `~/path_to_ws/src/f1tenth_gym_ros/src/f1tenth_gym_ros/config/sim.yaml`.
+- The configuration file for the simulation is at `src/f1tenth_gym_ros/config/sim.yaml`.
 - Topic names and namespaces can be configured in `sim.yaml` but it's highly recommended to keep them unchanged.
 - The map can be changed via the `map_path` parameter. You'll have to use the full path to the map file. The map follows the ROS convention. It is assumed that the image file and the `yaml` file for the map are in the same directory with the same name
 - The `num_agent` parameter can be changed arbitrarily between [1, 4].
 
 ## 1. Create a racecar to spawn and use in simulator
-- The baseline for a racecar (specific to this simulation) lives under [this](https://gitlab.eteration.com/composiv/eclipse-muto/multi-agent/racecar1) repository. If you'd like to test your own algorithm with your own racecar workspace, it is suggested that you read the README.md of the [racecar](https://gitlab.eteration.com/composiv/eclipse-muto/multi-agent/racecar1) repository.
+- The racecar algorithms are managed by Eclipse Muto and can be deployed dynamically. See the [demo documentation](demo/README.md) for details on how to deploy different racing algorithms to the simulated vehicles.
   
 ## 2. Topics published by the simulation
 - `{racecar_namespace}/{scan_topic}`: Where `racecar_namespace` and `scan_topic` are parameters from `sim.yaml` config file. These parameters could be but be configured from the `sim.yaml` file under the `config` directory but it is highly recommended that you keep them unchanged. If you wan't to change it for some specific reason, make sure that you update the corresponding racecar's `racecar_namespace` too. If left untouched, the simulation will publish a scan topic __*for each agent*__ with the following name: `/racecar{i}/scan` where {i} could be a number up to `num_agent` parameter specified in `sim.yaml`. If `num_agent` is 3, there will be `/racecar1/scan`, `/racecar2/scan`and `/racecar3/scan` with each containing different scan data based on the transforms and odometry of the specific racecar.
@@ -156,8 +174,6 @@ An rviz window should pop up showing the simulation either on your host system o
 # Troubleshooting
 
 ### Rviz dies / doesn't open properly!
-- If you're running the simulation via docker, don't forget to run the xhost command mentioned in the [installation](#with-an-nvidia-gpu) section and run the container with the command mentioned there
-
 - If you are using noVNC and receive the below error when you `docker compose up`:
 ```
 sim-1    | [rviz2-1] qt.qpa.xcb: could not connect to display novnc:0.0
@@ -207,5 +223,5 @@ It is recommended to leave the parameters under `sim.yaml` with their default va
 - An important thing to remind is while publishing a drive message, your `AckermannDriveStamped` message has to have a `header.frame_id` of `{racecar_namespace}/base_link`. Otherwise the simulator won't be able to tell which racecar to drive. For `racecar1` it would be `racecar1/base_link`
 
 ### My changes aren't reflecting to the simulation!
-- Make sure you rebuild the container or if you're using Ubuntu 20.04 native installation, rebuild the workspace with `colcon build`.
+- Make sure you rebuild the container or if you're using a native installation, rebuild the workspace with `colcon build`.
 
