@@ -33,8 +33,41 @@ DEPLOY_SCRIPT="$SCRIPT_DIR/demo/scripts/deploy-stack.py"
 SYMPHONY_DIR="$SCRIPT_DIR/symphony"
 SYMPHONY_INFRA_DIR="$SCRIPT_DIR/../symphony"
 
+# Port configuration (using 10000 offset to avoid common port conflicts)
+PORT_NOVNC=18080
+PORT_SYMPHONY_API=18082
+PORT_SYMPHONY_PORTAL=13000
+PORT_MQTT=11883
+
 # Symphony API URL
-SYMPHONY_API_URL="http://localhost:8082/v1alpha2/"
+SYMPHONY_API_URL="http://localhost:${PORT_SYMPHONY_API}/v1alpha2/"
+
+# Container runtime (docker or podman)
+CONTAINER_RUNTIME=""
+
+# Detect container runtime (prefer docker if both are available)
+detect_container_runtime() {
+    if command -v docker &> /dev/null; then
+        CONTAINER_RUNTIME="docker"
+        return 0
+    elif command -v podman &> /dev/null; then
+        CONTAINER_RUNTIME="podman"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Portable sed in-place edit (works on both macOS and Linux)
+sed_inplace() {
+    local pattern="$1"
+    local file="$2"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "$pattern" "$file"
+    else
+        sed -i "$pattern" "$file"
+    fi
+}
 
 # Track current step
 STEP=0
@@ -144,13 +177,13 @@ generate_artifacts() {
         # Update demo/stacks JSON
         local stacks_json="$STACKS_DIR/gap_follower_${variant}.json"
         if [ -f "$stacks_json" ]; then
-            sed -i "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$stacks_json"
+            sed_inplace "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$stacks_json"
         fi
 
         # Update symphony JSON (convert underscore to hyphen for filename)
         local symphony_json="$SYMPHONY_DIR/gap-follower-${variant}.json"
         if [ -f "$symphony_json" ]; then
-            sed -i "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$symphony_json"
+            sed_inplace "s/\"checksum\": \"[a-f0-9]*\"/\"checksum\": \"$checksum\"/" "$symphony_json"
         fi
 
         print_success "Created $tar_name (${checksum:0:12}...)"
@@ -168,7 +201,7 @@ show_muto_logs() {
     echo -e "${CYAN}│${NC}  ${BOLD}$title${NC} (last $lines lines from $container)"
     echo -e "${CYAN}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
 
-    docker logs "$container" 2>&1 | tail -n "$lines" | while IFS= read -r line; do
+    $CONTAINER_RUNTIME logs "$container" 2>&1 | tail -n "$lines" | while IFS= read -r line; do
         # Colorize log levels
         if [[ "$line" == *"[INFO]"* ]]; then
             echo -e "  ${GREEN}$line${NC}"
@@ -193,7 +226,7 @@ show_muto_state() {
     echo -e "${CYAN}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
 
     # Try to read state from inside the container - check workspaces directory
-    local state_output=$(docker exec "$container" bash -c '
+    local state_output=$($CONTAINER_RUNTIME exec "$container" bash -c '
         WORKSPACES_DIR="$HOME/.muto/workspaces"
         if [ -d "$WORKSPACES_DIR" ]; then
             echo "Deployed workspaces:"
@@ -253,7 +286,7 @@ deploy_stack() {
     fi
 
     # Execute inside container
-    docker exec "$container" bash -c "$cmd" 2>&1
+    $CONTAINER_RUNTIME exec "$container" bash -c "$cmd" 2>&1
 }
 
 # Get Symphony auth token
@@ -455,8 +488,12 @@ phase_prerequisites() {
 
     print_info "Verifying required tools are installed..."
 
-    check_command docker
-    print_success "Docker found"
+    if detect_container_runtime; then
+        print_success "Container runtime found: $CONTAINER_RUNTIME"
+    else
+        print_error "No container runtime found. Please install Docker or Podman."
+        exit 1
+    fi
 
     check_command curl
     print_success "curl found"
@@ -466,21 +503,6 @@ phase_prerequisites() {
 
     check_command base64
     print_success "base64 found"
-
-    # Check if ROS is sourced (for deployment script)
-    if [ -z "$ROS_DISTRO" ]; then
-        print_warning "ROS environment not sourced"
-        print_info "Attempting to source ROS Humble..."
-        if [ -f "/opt/ros/humble/setup.bash" ]; then
-            source /opt/ros/humble/setup.bash
-            print_success "ROS Humble sourced"
-        else
-            print_error "ROS Humble not found at /opt/ros/humble/setup.bash"
-            print_info "The direct deployment steps will need ROS to be available"
-        fi
-    else
-        print_success "ROS $ROS_DISTRO already sourced"
-    fi
 
     echo ""
     # Generate artifact archives and update checksums
@@ -496,17 +518,17 @@ phase_start_symphony() {
 deployments across edge devices. It communicates with Muto agents via MQTT."
 
     echo "Services to be started:"
-    echo -e "  ${CYAN}•${NC} symphony-api    - REST API for orchestration (port 8082)"
-    echo -e "  ${CYAN}•${NC} symphony-portal - Web dashboard (port 3000)"
-    echo -e "  ${CYAN}•${NC} mosquitto       - MQTT broker (port 1883)"
+    echo -e "  ${CYAN}•${NC} symphony-api    - REST API for orchestration (port $PORT_SYMPHONY_API)"
+    echo -e "  ${CYAN}•${NC} symphony-portal - Web dashboard (port $PORT_SYMPHONY_PORTAL)"
+    echo -e "  ${CYAN}•${NC} mosquitto       - MQTT broker (port $PORT_MQTT)"
     echo ""
 
-    print_action "Running: docker compose up -d (in symphony directory)"
+    print_action "Running: $CONTAINER_RUNTIME compose up -d (in symphony directory)"
 
     wait_for_enter
 
     cd "$SYMPHONY_INFRA_DIR"
-    docker compose up -d
+    $CONTAINER_RUNTIME compose up -d
 
     print_success "Symphony containers started"
 
@@ -523,9 +545,9 @@ deployments across edge devices. It communicates with Muto agents via MQTT."
 
     echo ""
     echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}  Symphony Portal: ${BOLD}http://localhost:3000${NC}                     ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  Symphony API:    ${BOLD}http://localhost:8082${NC}                     ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  MQTT Broker:     ${BOLD}localhost:1883${NC}                            ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  Symphony Portal: ${BOLD}http://localhost:${PORT_SYMPHONY_PORTAL}${NC}                    ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  Symphony API:    ${BOLD}http://localhost:${PORT_SYMPHONY_API}${NC}                    ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  MQTT Broker:     ${BOLD}localhost:${PORT_MQTT}${NC}                           ${GREEN}║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
 
     wait_for_enter
@@ -538,19 +560,19 @@ phase_start_simulation() {
 Each edge container represents an autonomous racecar with the Muto agent and composer."
 
     echo "Services to be started:"
-    echo -e "  ${CYAN}•${NC} novnc      - VNC server for visualization (port 8080)"
+    echo -e "  ${CYAN}•${NC} novnc      - VNC server for visualization (port $PORT_NOVNC)"
     echo -e "  ${CYAN}•${NC} sim        - F1TENTH Gym simulator with RViz"
     echo -e "  ${CYAN}•${NC} edge       - Muto edge container (racecar1)"
     echo -e "  ${CYAN}•${NC} edge2      - Muto edge container (racecar2)"
     echo -e "  ${CYAN}•${NC} edge3      - Muto edge container (racecar3)"
     echo ""
 
-    print_action "Running: docker compose up -d --build"
+    print_action "Running: $CONTAINER_RUNTIME compose up -d --build"
 
     wait_for_enter
 
     cd "$SCRIPT_DIR"
-    docker compose up -d --build
+    $CONTAINER_RUNTIME compose up -d --build
 
     print_success "Simulation containers started"
 
@@ -558,13 +580,13 @@ Each edge container represents an autonomous racecar with the Muto agent and com
 
     echo ""
     print_info "Checking container status..."
-    docker compose ps
+    $CONTAINER_RUNTIME compose ps
 
     echo ""
     print_success "Simulation is running!"
     echo ""
     echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}  Open your browser to: ${BOLD}http://localhost:8080/vnc.html${NC}        ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  Open your browser to: ${BOLD}http://localhost:${PORT_NOVNC}/vnc.html${NC}       ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  You should see RViz with the F1TENTH track                  ${GREEN}║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
 
@@ -806,7 +828,7 @@ phase_symphony_setup() {
     echo ""
     print_success "Symphony resources registered!"
     echo ""
-    echo -e "${DIM}You can view these in the Symphony Portal at http://localhost:3000${NC}"
+    echo -e "${DIM}You can view these in the Symphony Portal at http://localhost:${PORT_SYMPHONY_PORTAL}${NC}"
 
     wait_for_enter
 }
@@ -960,9 +982,9 @@ phase_summary() {
     echo ""
     echo -e "${DIM}The simulation is still running. You can:${NC}"
     echo -e "  ${CYAN}•${NC} Continue experimenting with deployments"
-    echo -e "  ${CYAN}•${NC} View Symphony Portal: ${BOLD}http://localhost:3000${NC}"
-    echo -e "  ${CYAN}•${NC} View simulation: ${BOLD}http://localhost:8080/vnc.html${NC}"
-    echo -e "  ${CYAN}•${NC} Run: ${BOLD}docker compose logs -f${NC} to see container logs"
+    echo -e "  ${CYAN}•${NC} View Symphony Portal: ${BOLD}http://localhost:${PORT_SYMPHONY_PORTAL}${NC}"
+    echo -e "  ${CYAN}•${NC} View simulation: ${BOLD}http://localhost:${PORT_NOVNC}/vnc.html${NC}"
+    echo -e "  ${CYAN}•${NC} Run: ${BOLD}$CONTAINER_RUNTIME compose logs -f${NC} to see container logs"
     echo ""
 }
 
@@ -973,12 +995,12 @@ phase_cleanup_prompt() {
     if [[ "$response" =~ ^[Yy]$ ]]; then
         print_action "Stopping simulation containers..."
         cd "$SCRIPT_DIR"
-        docker compose down
+        $CONTAINER_RUNTIME compose down
         print_success "Simulation stopped"
 
         print_action "Stopping Symphony containers..."
         cd "$SYMPHONY_INFRA_DIR"
-        docker compose down
+        $CONTAINER_RUNTIME compose down
         print_success "Symphony stopped"
     else
         print_info "Containers left running"
