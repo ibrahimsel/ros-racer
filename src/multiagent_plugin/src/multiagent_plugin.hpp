@@ -18,7 +18,6 @@
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <rviz_common/panel.hpp>
 #include <QPushButton>
 #include <QLabel>
@@ -45,8 +44,9 @@ namespace multiagent_plugin
         QPushButton *pause_button_;
         QPushButton *reset_button_;
         QPushButton *spawn_all_button_;
+        QPushButton *clear_obstacles_button_;
         
-        // UI Elements - Agent Selection
+        // UI Elements - Racecar Selection
         QComboBox *agent_dropdown_;
         
         // UI Elements - Lap Times
@@ -61,7 +61,8 @@ namespace multiagent_plugin
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reset_publisher_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pause_publisher_;
         rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr agent_publisher_;
-        rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_publisher_;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spawn_all_publisher_;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr clear_obstacles_publisher_;
         
         // Subscribers
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr lap_times_subscriber_;
@@ -70,6 +71,8 @@ namespace multiagent_plugin
         // State tracking
         bool simulation_running_;
         bool simulation_paused_;
+        bool spawn_all_mode_;
+        bool algorithm_active_;
         
         // Helper methods
         void updateStatusIndicator(const QString &state, const QString &color);
@@ -79,7 +82,8 @@ namespace multiagent_plugin
         void onStartButtonClicked();
         void onResetButtonClicked();
         void onPauseButtonClicked();
-        void onSpawnAllClicked();
+        void onSpawnAllToggled(bool checked);
+        void onClearObstaclesClicked();
         void onAgentSelected(int index);
         void spinSome();
         

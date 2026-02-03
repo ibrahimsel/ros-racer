@@ -504,6 +504,30 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /race_markers
       Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Obstacles
+      Namespaces:
+        obstacles: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /obstacles
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: LapPoint
+      Namespaces:
+        lap_point: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lap_point
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

@@ -27,7 +27,9 @@ namespace multiagent_plugin
     MultiagentPanel::MultiagentPanel(QWidget *parent)
         : rviz_common::Panel(parent),
           simulation_running_(false),
-          simulation_paused_(false)
+          simulation_paused_(false),
+          spawn_all_mode_(false),
+          algorithm_active_(false)
     {
         // Create ROS node first to read parameters
         node_ = std::make_shared<rclcpp::Node>("multiagent_plugin_node");
@@ -52,7 +54,7 @@ namespace multiagent_plugin
         status_led_->setFrameShape(QFrame::Box);
         status_led_->setStyleSheet("background-color: #888888; border-radius: 10px; border: 1px solid #555;");
         
-        status_label_ = new QLabel("Waiting...", this);
+        status_label_ = new QLabel("Waiting for algorithm...", this);
         status_label_->setStyleSheet("font-weight: bold;");
         
         status_layout->addWidget(status_led_);
@@ -81,20 +83,27 @@ namespace multiagent_plugin
         
         spawn_all_button_ = new QPushButton("⊕ Spawn All", this);
         spawn_all_button_->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 8px; } QPushButton:hover { background-color: #1976D2; }");
+        spawn_all_button_->setCheckable(true);  // Toggle button
         
         buttons_row2->addWidget(reset_button_);
         buttons_row2->addWidget(spawn_all_button_);
         
+        QHBoxLayout *buttons_row3 = new QHBoxLayout;
+        clear_obstacles_button_ = new QPushButton("🗑 Clear Obstacles", this);
+        clear_obstacles_button_->setStyleSheet("QPushButton { background-color: #9E9E9E; color: white; font-weight: bold; padding: 8px; } QPushButton:hover { background-color: #757575; }");
+        buttons_row3->addWidget(clear_obstacles_button_);
+        
         control_layout->addLayout(buttons_row1);
         control_layout->addLayout(buttons_row2);
+        control_layout->addLayout(buttons_row3);
         control_group->setLayout(control_layout);
         main_layout->addWidget(control_group);
 
-        // === AGENT SELECTION SECTION ===
-        QGroupBox *agent_group = new QGroupBox("Agent Selection", this);
+        // === RACECAR SELECTION SECTION ===
+        QGroupBox *agent_group = new QGroupBox("Racecar Selection", this);
         QVBoxLayout *agent_layout = new QVBoxLayout;
         
-        QLabel *agent_label = new QLabel("Choose Pose Estimation:", this);
+        QLabel *agent_label = new QLabel("Select racecar for pose estimation:", this);
         agent_dropdown_ = new QComboBox(this);
         
         // Dynamically populate dropdown based on num_agents
@@ -132,7 +141,8 @@ namespace multiagent_plugin
         pause_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("sim_pause", 10);
         reset_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("sim_reset", 10);
         agent_publisher_ = node_->create_publisher<std_msgs::msg::Int32>("racecar_to_estimate_pose", 10);
-        pose_publisher_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/initialpose", 10);
+        spawn_all_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("spawn_all_mode", 10);
+        clear_obstacles_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("clear_obstacles", 10);
         
         lap_times_subscriber_ = node_->create_subscription<std_msgs::msg::String>(
             "lap_times", 10, std::bind(&MultiagentPanel::updateLapTimesLabel, this, std::placeholders::_1));
@@ -145,12 +155,20 @@ namespace multiagent_plugin
         connect(ros_spin_timer_, SIGNAL(timeout()), this, SLOT(spinSome()));
         ros_spin_timer_->start(100);
         
-        // Connect signals
-        connect(agent_dropdown_, SIGNAL(currentIndexChanged(int)), this, SLOT(onAgentSelected(int)));
+        // Connect signals - use activated instead of currentIndexChanged to fire on every selection
+        connect(agent_dropdown_, SIGNAL(activated(int)), this, SLOT(onAgentSelected(int)));
         connect(start_button_, SIGNAL(clicked()), this, SLOT(onStartButtonClicked()));
         connect(pause_button_, SIGNAL(clicked()), this, SLOT(onPauseButtonClicked()));
         connect(reset_button_, SIGNAL(clicked()), this, SLOT(onResetButtonClicked()));
-        connect(spawn_all_button_, SIGNAL(clicked()), this, SLOT(onSpawnAllClicked()));
+        connect(spawn_all_button_, SIGNAL(toggled(bool)), this, SLOT(onSpawnAllToggled(bool)));
+        connect(clear_obstacles_button_, SIGNAL(clicked()), this, SLOT(onClearObstaclesClicked()));
+        
+        // Publish initial agent selection (index 0 = Racecar 1)
+        QTimer::singleShot(500, this, [this]() {
+            std_msgs::msg::Int32 msg;
+            msg.data = 0;
+            agent_publisher_->publish(msg);
+        });
     }
 
     void MultiagentPanel::setupStylesheet()
@@ -175,23 +193,36 @@ namespace multiagent_plugin
     void MultiagentPanel::updateLapTimesLabel(const std_msgs::msg::String::SharedPtr msg)
     {
         lap_times_label_->setText(QString::fromStdString(msg->data));
+        
+        // If we're receiving lap times, algorithm is active
+        if (!algorithm_active_) {
+            algorithm_active_ = true;
+        }
     }
 
     void MultiagentPanel::updateRaceStats(const std_msgs::msg::String::SharedPtr msg)
     {
-        // Simple string parsing to avoid nlohmann/json dependency
+        // Simple string parsing to check states
         std::string data = msg->data;
         bool running = data.find("\"simulation_running\": true") != std::string::npos ||
                        data.find("\"simulation_running\":true") != std::string::npos;
         bool paused = data.find("\"simulation_paused\": true") != std::string::npos ||
                       data.find("\"simulation_paused\":true") != std::string::npos;
         
+        // Check if any agent has non-zero speed (algorithm is driving)
+        bool has_speed = data.find("\"speed\": 0.0") == std::string::npos &&
+                         data.find("\"speed\":0.0") == std::string::npos &&
+                         data.find("\"speed\": 0,") == std::string::npos;
+        
         if (!running) {
             updateStatusIndicator("Stopped", "#888888");
         } else if (paused) {
             updateStatusIndicator("Paused", "#FF9800");
+        } else if (!has_speed && !algorithm_active_) {
+            updateStatusIndicator("Waiting for algorithm...", "#888888");
         } else {
             updateStatusIndicator("Racing", "#4CAF50");
+            algorithm_active_ = true;
         }
         
         simulation_running_ = running;
@@ -202,6 +233,11 @@ namespace multiagent_plugin
 
     void MultiagentPanel::onAgentSelected(int index)
     {
+        // Disable spawn_all mode when manually selecting an agent
+        if (spawn_all_mode_) {
+            spawn_all_button_->setChecked(false);
+        }
+        
         std_msgs::msg::Int32 msg;
         msg.data = index;
         agent_publisher_->publish(msg);
@@ -212,6 +248,7 @@ namespace multiagent_plugin
         std_msgs::msg::Bool msg;
         msg.data = true;
         start_publisher_->publish(msg);
+        simulation_running_ = true;
         updateStatusIndicator("Racing", "#4CAF50");
     }
 
@@ -220,6 +257,7 @@ namespace multiagent_plugin
         std_msgs::msg::Bool msg;
         msg.data = true;
         reset_publisher_->publish(msg);
+        algorithm_active_ = false;
     }
 
     void MultiagentPanel::onPauseButtonClicked()
@@ -227,35 +265,38 @@ namespace multiagent_plugin
         std_msgs::msg::Bool msg;
         msg.data = true;
         pause_publisher_->publish(msg);
+        
+        if (simulation_paused_) {
+            updateStatusIndicator("Racing", "#4CAF50");
+        } else {
+            updateStatusIndicator("Paused", "#FF9800");
+        }
     }
 
-    void MultiagentPanel::onSpawnAllClicked()
+    void MultiagentPanel::onSpawnAllToggled(bool checked)
     {
-        // Spawn all agents in a line formation at the start
-        for (int i = 0; i < num_agents_; i++) {
-            // Select the agent
-            std_msgs::msg::Int32 agent_msg;
-            agent_msg.data = i;
-            agent_publisher_->publish(agent_msg);
-            
-            // Small delay to allow processing
-            rclcpp::sleep_for(std::chrono::milliseconds(50));
-            
-            // Publish initial pose (agents in a vertical line, 1m apart)
-            geometry_msgs::msg::PoseWithCovarianceStamped pose_msg;
-            pose_msg.header.stamp = node_->now();
-            pose_msg.header.frame_id = "map";
-            pose_msg.pose.pose.position.x = static_cast<double>(i);
-            pose_msg.pose.pose.position.y = 0.0;
-            pose_msg.pose.pose.position.z = 0.0;
-            pose_msg.pose.pose.orientation.x = 0.0;
-            pose_msg.pose.pose.orientation.y = 0.0;
-            pose_msg.pose.pose.orientation.z = 0.0;
-            pose_msg.pose.pose.orientation.w = 1.0;
-            pose_publisher_->publish(pose_msg);
-            
-            rclcpp::sleep_for(std::chrono::milliseconds(100));
+        spawn_all_mode_ = checked;
+        
+        // Update button appearance
+        if (checked) {
+            spawn_all_button_->setStyleSheet("QPushButton { background-color: #1565C0; color: white; font-weight: bold; padding: 8px; border: 2px solid #0D47A1; }");
+            spawn_all_button_->setText("⊕ Spawn All (ACTIVE)");
+        } else {
+            spawn_all_button_->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 8px; } QPushButton:hover { background-color: #1976D2; }");
+            spawn_all_button_->setText("⊕ Spawn All");
         }
+        
+        // Publish spawn_all mode state
+        std_msgs::msg::Bool msg;
+        msg.data = checked;
+        spawn_all_publisher_->publish(msg);
+    }
+
+    void MultiagentPanel::onClearObstaclesClicked()
+    {
+        std_msgs::msg::Bool msg;
+        msg.data = true;
+        clear_obstacles_publisher_->publish(msg);
     }
 
 } // namespace multiagent_plugin
