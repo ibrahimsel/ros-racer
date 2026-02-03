@@ -27,9 +27,9 @@ namespace multiagent_plugin
         pause_button_ = new QPushButton("Pause/Resume Race", this);
         reset_button_ = new QPushButton("Reset Race", this);
         agent_dropdown_ = new QComboBox(this);
-        agent_dropdown_->addItem("Agent1");
-        agent_dropdown_->addItem("Agent2");
-        agent_dropdown_->addItem("Agent3");
+        agent_dropdown_->addItem("Racecar 1");
+        agent_dropdown_->addItem("Racecar 2");
+        agent_dropdown_->addItem("Racecar 3");
         agent_dropdown_->addItem("Set Lap Point");
         QTimer *ros_spin_timer_;
 
