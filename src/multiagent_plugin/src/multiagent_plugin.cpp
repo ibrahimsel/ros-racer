@@ -21,6 +21,8 @@
 #include <QTimer>
 #include <QFont>
 #include <QFrame>
+#include <cstdlib>
+#include <string>
 
 namespace multiagent_plugin
 {
@@ -209,20 +211,42 @@ namespace multiagent_plugin
         bool paused = data.find("\"simulation_paused\": true") != std::string::npos ||
                       data.find("\"simulation_paused\":true") != std::string::npos;
         
-        // Check if any agent has non-zero speed (algorithm is driving)
-        bool has_speed = data.find("\"speed\": 0.0") == std::string::npos &&
-                         data.find("\"speed\":0.0") == std::string::npos &&
-                         data.find("\"speed\": 0,") == std::string::npos;
+        // Parse actual speed values to detect if any car is moving
+        // Look for "speed": followed by a number
+        bool any_moving = false;
+        size_t pos = 0;
+        while ((pos = data.find("\"speed\"", pos)) != std::string::npos) {
+            pos = data.find(":", pos);
+            if (pos == std::string::npos) break;
+            pos++; // Skip ':'
+            while (pos < data.size() && (data[pos] == ' ' || data[pos] == '\t')) pos++;
+            // Parse the number
+            double speed = 0.0;
+            try {
+                size_t end_pos;
+                speed = std::stod(data.substr(pos), &end_pos);
+            } catch (...) {
+                speed = 0.0;
+            }
+            // Consider moving if speed > 0.1 m/s
+            if (speed > 0.1) {
+                any_moving = true;
+                break;
+            }
+        }
         
         if (!running) {
             updateStatusIndicator("Stopped", "#888888");
+            algorithm_active_ = false;
         } else if (paused) {
             updateStatusIndicator("Paused", "#FF9800");
-        } else if (!has_speed && !algorithm_active_) {
-            updateStatusIndicator("Waiting for algorithm...", "#888888");
-        } else {
+        } else if (any_moving) {
             updateStatusIndicator("Racing", "#4CAF50");
             algorithm_active_ = true;
+        } else {
+            // Running but no car is moving
+            updateStatusIndicator("Idle", "#FFC107");
+            algorithm_active_ = false;
         }
         
         simulation_running_ = running;
@@ -233,8 +257,9 @@ namespace multiagent_plugin
 
     void MultiagentPanel::onAgentSelected(int index)
     {
-        // Disable spawn_all mode when manually selecting an agent
+        // Disable spawn_all mode when manually selecting anything
         if (spawn_all_mode_) {
+            spawn_all_mode_ = false;
             spawn_all_button_->setChecked(false);
         }
         
