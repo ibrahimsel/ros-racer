@@ -314,7 +314,7 @@ deploy_stack() {
     local stack_filename=$(basename "$stack_json")
 
     # Build the command - use the mounted /edge/demo directory
-    local cmd="source /opt/ros/humble/setup.bash && source /edge/muto/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
+    local cmd="source /opt/ros/humble/setup.bash && source /edge/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
 
     if [ -n "$vehicle" ]; then
         cmd="$cmd --vehicle $vehicle"

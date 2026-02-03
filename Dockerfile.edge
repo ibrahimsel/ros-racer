@@ -12,17 +12,21 @@ RUN apt-get update --fix-missing && apt-get install -y \
     ros-humble-rmw-cyclonedds-cpp \
     git
 
-    
-RUN git clone https://github.com/ibrahimsel/muto.git -b test/e2e
-WORKDIR '/edge/muto'
-COPY ./muto.repos /edge/muto/muto.repos
-RUN vcs import src < muto.repos 
-RUN source /opt/ros/humble/setup.bash && \
+# Copy local files instead of cloning muto repo
+COPY ./muto.repos /edge/muto.repos
+COPY ./launch /edge/launch
+COPY ./config /edge/config
+COPY ./src/gap_follower /edge/src/gap_follower
+
+# Import muto components and build
+RUN mkdir -p /edge/src && \
+    vcs import src < muto.repos && \
+    source /opt/ros/humble/setup.bash && \
     rosdep update && \
     rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
     colcon build && \
     cd src/agent/symphony-sdk-python && pip3 install -e .
-    
+
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
