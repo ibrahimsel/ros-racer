@@ -217,6 +217,22 @@ class GymBridge(Node):
 
         self.marker_pub = self.create_publisher(MarkerArray, 'racecar_labels', 10)
 
+        # Pre-allocate message objects for performance (avoid allocation in callbacks)
+        self._scan_msgs = [LaserScan() for _ in range(self.num_agents)]
+        self._odom_msgs = [Odometry() for _ in range(self.num_agents)]
+        for i in range(self.num_agents):
+            racecar_namespace = self.racecar_namespace + str(i + 1)
+            # Pre-fill static scan fields
+            self._scan_msgs[i].header.frame_id = racecar_namespace + "/laser"
+            self._scan_msgs[i].angle_min = self.angle_min
+            self._scan_msgs[i].angle_max = self.angle_max
+            self._scan_msgs[i].angle_increment = self.angle_inc
+            self._scan_msgs[i].range_min = 0.0
+            self._scan_msgs[i].range_max = 30.0
+            # Pre-fill static odom fields
+            self._odom_msgs[i].header.frame_id = "map"
+            self._odom_msgs[i].child_frame_id = racecar_namespace + "/base_link"
+
         self.racecar_drive_published = False
         self.last_log_time = time.time()
         self.pose_reset_sub = self.create_subscription(
@@ -228,15 +244,17 @@ class GymBridge(Node):
         self.drive_timeout = 0.1  # 100ms timeout - stop car if no command received
 
     def handle_collision(self):
-        """Checks for collision and handles if there is any."""
+        """Checks for collision and handles if there is any.
+        
+        Optimized: Uses vectorized numpy min instead of O(n × 1080) loop.
+        """
         collision_threshold = 0.21
-        for racecar_idx in range(self.num_agents):
-            for scan in self.obs["scans"][racecar_idx]:
-                if not self.agent_disqualified[racecar_idx] and scan <= collision_threshold:
-                    self.agent_disqualified[racecar_idx] = True
-                    self.lap_time_trackers[racecar_idx].reset(restart=False)
-                    self.get_logger().info(
-                        f"Agent {racecar_idx + 1} is disqualified")
+        min_scans = np.min(self.obs["scans"], axis=1)  # Vectorized - one op for all agents
+        for i in range(self.num_agents):
+            if not self.agent_disqualified[i] and min_scans[i] <= collision_threshold:
+                self.agent_disqualified[i] = True
+                self.lap_time_trackers[i].reset(restart=False)
+                self.get_logger().info(f"Agent {i + 1} is disqualified")
 
     def choose_active_agent_callback(self, agent_index):
         self.active_agent_to_reset_pose = agent_index.data
@@ -342,19 +360,11 @@ class GymBridge(Node):
         if self.simulation_running and not self.simulation_paused:
             ts = self.get_clock().now().to_msg()
 
-            # Publish scans for each agent
+            # Publish scans for each agent (using pre-allocated messages)
             for i in range(self.num_agents):
-                racecar_namespace = self.racecar_namespace + str(i + 1)
-                scan = LaserScan()
-                scan.header.stamp = ts
-                scan.header.frame_id = racecar_namespace + "/laser"
-                scan.angle_min = self.angle_min
-                scan.angle_max = self.angle_max
-                scan.angle_increment = self.angle_inc
-                scan.range_min = 0.0
-                scan.range_max = 30.0
-                scan.ranges = list(self.obs["scans"][i])
-                self.scan_publishers[i].publish(scan)
+                self._scan_msgs[i].header.stamp = ts
+                self._scan_msgs[i].ranges = list(self.obs["scans"][i])
+                self.scan_publishers[i].publish(self._scan_msgs[i])
 
             # Publish transforms, odom, and markers ONCE (they loop internally)
             self._publish_odom(ts)
@@ -393,24 +403,36 @@ class GymBridge(Node):
             np.array(self.pose_reset_arr))
 
     def _publish_odom(self, ts):
+        """Publish odometry for all agents using pre-allocated messages."""
         for i in range(self.num_agents):
-            racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_odom = Odometry()
-            racecar_odom.header.stamp = ts
-            racecar_odom.header.frame_id = "map"
-            racecar_odom.child_frame_id = racecar_namespace + "/base_link"
-            racecar_odom.pose.pose.position.x = self.obs["poses_x"][i]
-            racecar_odom.pose.pose.position.y = self.obs["poses_y"][i]
+            odom = self._odom_msgs[i]
+            odom.header.stamp = ts
+            odom.pose.pose.position.x = self.obs["poses_x"][i]
+            odom.pose.pose.position.y = self.obs["poses_y"][i]
             racecar_quat = euler.euler2quat(
                 0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
-            racecar_odom.pose.pose.orientation.x = racecar_quat[1]
-            racecar_odom.pose.pose.orientation.y = racecar_quat[2]
-            racecar_odom.pose.pose.orientation.z = racecar_quat[3]
-            racecar_odom.pose.pose.orientation.w = racecar_quat[0]
-            racecar_odom.twist.twist.linear.x = self.obs["linear_vels_x"][i]
-            racecar_odom.twist.twist.linear.y = self.obs["linear_vels_y"][i]
-            racecar_odom.twist.twist.angular.z = self.obs["ang_vels_z"][i]
-            self.odom_publishers[i].publish(racecar_odom)
+            odom.pose.pose.orientation.x = racecar_quat[1]
+            odom.pose.pose.orientation.y = racecar_quat[2]
+            odom.pose.pose.orientation.z = racecar_quat[3]
+            odom.pose.pose.orientation.w = racecar_quat[0]
+            odom.twist.twist.linear.x = self.obs["linear_vels_x"][i]
+            odom.twist.twist.linear.y = self.obs["linear_vels_y"][i]
+            odom.twist.twist.angular.z = self.obs["ang_vels_z"][i]
+            self.odom_publishers[i].publish(odom)
+
+    # Color palette for up to 10 agents (cycles if more)
+    AGENT_COLORS = [
+        (1.0, 0.0, 0.0),    # red
+        (0.0, 1.0, 0.0),    # green
+        (0.0, 0.0, 1.0),    # blue
+        (1.0, 1.0, 0.0),    # yellow
+        (1.0, 0.0, 1.0),    # magenta
+        (0.0, 1.0, 1.0),    # cyan
+        (1.0, 0.5, 0.0),    # orange
+        (0.5, 0.0, 1.0),    # purple
+        (1.0, 0.75, 0.8),   # pink
+        (0.6, 0.3, 0.0),    # brown
+    ]
 
     def _publish_name_markers(self, ts):
         arr = MarkerArray()
@@ -425,7 +447,7 @@ class GymBridge(Node):
             m.action   = Marker.ADD
             m.pose.position.z = 0.5      # half‑meter above roof
             m.scale.z  = 0.3             # text height (m)
-            r, g, b    = (1.0,0.0,0.0) if i==0 else (0.0,1.0,0.0) if i==1 else (0.0,0.0,1.0)
+            r, g, b    = self.AGENT_COLORS[i % len(self.AGENT_COLORS)]
             m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 1.0
             m.text = ns.replace("racecar", "agent")
             arr.markers.append(m)
@@ -433,6 +455,8 @@ class GymBridge(Node):
 
 
     def _publish_transforms(self, ts):
+        """Publish base_link transforms for all agents in a single batch."""
+        transforms = []
         for i in range(self.num_agents):
             racecar_namespace = self.racecar_namespace + str(i + 1)
             racecar_t = Transform()
@@ -450,31 +474,44 @@ class GymBridge(Node):
             racecar_ts.header.stamp = ts
             racecar_ts.header.frame_id = "map"
             racecar_ts.child_frame_id = racecar_namespace + "/base_link"
-            self.br.sendTransform(racecar_ts)
+            transforms.append(racecar_ts)
+        self.br.sendTransform(transforms)  # Single batch call
 
     def _publish_wheel_transforms(self, ts):
+        """Publish wheel transforms for all agents in a single batch."""
+        transforms = []
         for i in range(self.num_agents):
             racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_wheel_ts = TransformStamped()
-            # Use the current steering angle for wheel orientation, not angular velocity!
-            # The steering angle is stored in drive_msgs[i][0]
+            # Use the current steering angle for wheel orientation
             steering_angle = self.drive_msgs[i][0]
             racecar_wheel_quat = euler.euler2quat(
                 0.0, 0.0, steering_angle, axes="sxyz"
             )
-            racecar_wheel_ts.transform.rotation.x = racecar_wheel_quat[1]
-            racecar_wheel_ts.transform.rotation.y = racecar_wheel_quat[2]
-            racecar_wheel_ts.transform.rotation.z = racecar_wheel_quat[3]
-            racecar_wheel_ts.transform.rotation.w = racecar_wheel_quat[0]
-            racecar_wheel_ts.header.stamp = ts
-            racecar_wheel_ts.header.frame_id = racecar_namespace + "/front_left_hinge"
-            racecar_wheel_ts.child_frame_id = racecar_namespace + "/front_left_wheel"
-            self.br.sendTransform(racecar_wheel_ts)
-            racecar_wheel_ts.header.frame_id = racecar_namespace + "/front_right_hinge"
-            racecar_wheel_ts.child_frame_id = racecar_namespace + "/front_right_wheel"
-            self.br.sendTransform(racecar_wheel_ts)
+            # Left wheel
+            left_wheel_ts = TransformStamped()
+            left_wheel_ts.transform.rotation.x = racecar_wheel_quat[1]
+            left_wheel_ts.transform.rotation.y = racecar_wheel_quat[2]
+            left_wheel_ts.transform.rotation.z = racecar_wheel_quat[3]
+            left_wheel_ts.transform.rotation.w = racecar_wheel_quat[0]
+            left_wheel_ts.header.stamp = ts
+            left_wheel_ts.header.frame_id = racecar_namespace + "/front_left_hinge"
+            left_wheel_ts.child_frame_id = racecar_namespace + "/front_left_wheel"
+            transforms.append(left_wheel_ts)
+            # Right wheel
+            right_wheel_ts = TransformStamped()
+            right_wheel_ts.transform.rotation.x = racecar_wheel_quat[1]
+            right_wheel_ts.transform.rotation.y = racecar_wheel_quat[2]
+            right_wheel_ts.transform.rotation.z = racecar_wheel_quat[3]
+            right_wheel_ts.transform.rotation.w = racecar_wheel_quat[0]
+            right_wheel_ts.header.stamp = ts
+            right_wheel_ts.header.frame_id = racecar_namespace + "/front_right_hinge"
+            right_wheel_ts.child_frame_id = racecar_namespace + "/front_right_wheel"
+            transforms.append(right_wheel_ts)
+        self.br.sendTransform(transforms)  # Single batch call
 
     def _publish_laser_transforms(self, ts):
+        """Publish laser transforms for all agents in a single batch."""
+        transforms = []
         for i in range(self.num_agents):
             racecar_namespace = self.racecar_namespace + str(i + 1)
             racecar_scan_ts = TransformStamped()
@@ -483,7 +520,8 @@ class GymBridge(Node):
             racecar_scan_ts.header.stamp = ts
             racecar_scan_ts.header.frame_id = racecar_namespace + "/base_link"
             racecar_scan_ts.child_frame_id = racecar_namespace + "/laser"
-            self.br.sendTransform(racecar_scan_ts)
+            transforms.append(racecar_scan_ts)
+        self.br.sendTransform(transforms)  # Single batch call
 
     def publish_lap_times(self):
         if not self.simulation_paused and self.simulation_running:
