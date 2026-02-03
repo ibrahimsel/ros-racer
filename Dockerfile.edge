@@ -16,9 +16,13 @@ RUN apt-get update --fix-missing && apt-get install -y \
     ros-humble-std-msgs \
     ros-humble-geometry-msgs \
     ros-humble-nav-msgs \
+    ros-humble-tf2-msgs \
+    ros-humble-tf2-ros \
     ros-humble-rmw-cyclonedds-cpp \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+    git
+
+# Install Python packages that rosdep might try to get via apt (not available in ros-core)
+RUN pip3 install --no-cache-dir jsonschema requests paho-mqtt
 
 # Copy local files instead of cloning muto repo
 COPY ./muto.repos /edge/muto.repos
@@ -32,9 +36,10 @@ RUN mkdir -p /edge/src && \
     source /opt/ros/humble/setup.bash && \
     (rosdep init || true) && \
     rosdep update && \
-    rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
+    rosdep install -y -r --ignore-src --from-paths ./src --rosdistro humble --skip-keys="python3-jsonschema python3-requests python3-paho-mqtt" && \
     colcon build && \
-    cd src/agent/symphony-sdk-python && pip3 install -e .
+    cd src/agent/symphony-sdk-python && pip3 install -e . && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
