@@ -98,6 +98,7 @@ class GymBridge(Node):
         self.declare_parameter("map_path", "")
         self.declare_parameter("map_img_ext", "")
         self.declare_parameter("num_agent", 3)
+        self.declare_parameter("auto_start", True)  # Auto-start simulation on launch
         default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
                                         "maps",
                                         "example_map")
@@ -283,6 +284,13 @@ class GymBridge(Node):
         # Track last drive message time for each agent to detect stale commands
         self.last_drive_time = [time.time()] * self.num_agents
         self.drive_timeout = 0.1  # 100ms timeout - stop car if no command received
+
+        # Auto-start simulation if enabled (removes need for Start button click)
+        if self.get_parameter("auto_start").value:
+            self.simulation_running = True
+            for tracker in self.lap_time_trackers:
+                tracker.start()
+            self.get_logger().info("Simulation auto-started")
 
     def handle_collision(self):
         """Checks for collision and handles if there is any.
