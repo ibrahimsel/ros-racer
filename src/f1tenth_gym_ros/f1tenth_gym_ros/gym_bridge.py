@@ -104,6 +104,8 @@ class GymBridge(Node):
             Bool, 'sim_start', self.start_callback, 10)
         self.pause_subscriber = self.create_subscription(
             Bool, 'sim_pause', self.pause_callback, 10)
+        self.reset_subscriber = self.create_subscription(
+            Bool, 'sim_reset', self.reset_callback, 10)
         self.choose_active_agent_subscriber = self.create_subscription(
             Int32, 'racecar_to_estimate_pose', self.choose_active_agent_callback, 10)
 
@@ -154,6 +156,9 @@ class GymBridge(Node):
         for i in range(len(self.pose_reset_arr)):
             # spawn racecars in a vertical column with 1.0 meters of distance between each
             self.pose_reset_arr[i][0] += i
+
+        # Store initial start positions for race reset
+        self.start_positions = self.pose_reset_arr.copy()
 
         self.obs, _, self.done, _ = self.env.reset(self.pose_reset_arr)
 
@@ -298,6 +303,22 @@ class GymBridge(Node):
                 for tracker in self.lap_time_trackers:
                     tracker.start()
                 self.get_logger().info('Tracker and Simulation resumed')
+
+    def reset_callback(self, msg):
+        """Reset all agents to their starting positions."""
+        if msg.data:
+            self.get_logger().info('Resetting race...')
+            # Reset positions to start
+            self.pose_reset_arr = self.start_positions.copy()
+            self.obs, _, self.done, _ = self.env.reset(np.array(self.pose_reset_arr))
+            # Clear disqualifications
+            self.agent_disqualified = [False] * self.num_agents
+            # Reset lap trackers
+            for tracker in self.lap_time_trackers:
+                tracker.reset(restart=True)
+            # Reset best lap times
+            self.best_lap_times = [0.0] * self.num_agents
+            self.get_logger().info('Race reset complete')
 
     def drive_callback(self, drive_msg):
         current_time = time.time()

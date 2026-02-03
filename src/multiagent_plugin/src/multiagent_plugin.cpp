@@ -22,14 +22,23 @@ namespace multiagent_plugin
     MultiagentPanel::MultiagentPanel(QWidget *parent)
         : rviz_common::Panel(parent)
     {
-        // Initialize elements
+        // Create ROS node first to read parameters
+        node_ = std::make_shared<rclcpp::Node>("multiagent_plugin_node");
+        
+        // Get num_agents parameter (default: 3)
+        node_->declare_parameter("num_agents", 3);
+        int num_agents = node_->get_parameter("num_agents").as_int();
+
+        // Initialize UI elements
         start_button_ = new QPushButton("Start Race", this);
         pause_button_ = new QPushButton("Pause/Resume Race", this);
         reset_button_ = new QPushButton("Reset Race", this);
         agent_dropdown_ = new QComboBox(this);
-        agent_dropdown_->addItem("Racecar 1");
-        agent_dropdown_->addItem("Racecar 2");
-        agent_dropdown_->addItem("Racecar 3");
+        
+        // Dynamically populate dropdown based on num_agents
+        for (int i = 1; i <= num_agents; i++) {
+            agent_dropdown_->addItem(QString("Racecar %1").arg(i));
+        }
         agent_dropdown_->addItem("Set Lap Point");
         QTimer *ros_spin_timer_;
 
@@ -44,8 +53,6 @@ namespace multiagent_plugin
         layout->addWidget(pause_button_);
         layout->addWidget(reset_button_);
         setLayout(layout);
-
-        node_ = std::make_shared<rclcpp::Node>("multiagent_plugin_node");
         lap_times_subscriber_ = node_->create_subscription<std_msgs::msg::String>(
             "lap_times", 10, std::bind(&MultiagentPanel::updateLapTimesLabel, this, std::placeholders::_1));
 
