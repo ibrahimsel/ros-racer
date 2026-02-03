@@ -23,6 +23,9 @@ from typing import Optional, Tuple
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from ackermann_msgs.msg import AckermannDriveStamped
+from visualization_msgs.msg import Marker, MarkerArray
+from geometry_msgs.msg import Point
+from std_msgs.msg import ColorRGBA
 
 # =============================================================================
 # ENVIRONMENT PARAMETERS - Tune these for different driving styles
@@ -271,6 +274,11 @@ class GapFollower(Node):
             AckermannDriveStamped, f'/{self.hostname}/drive', 1
         )
         self.create_subscription(LaserScan, f'/{self.hostname}/scan', self.cb, 1)
+        
+        # Visualization publishers
+        self.viz_pub = self.create_publisher(
+            MarkerArray, f'/{self.hostname}/gap_viz', 10
+        )
 
         # State for smoothing and rate limiting
         self.last_steer = 0.0
@@ -371,6 +379,132 @@ class GapFollower(Node):
         self.last_speed = speed
 
         self.publish_drive(scan.header.stamp, steer_final, speed)
+        
+        # Publish visualization
+        self.publish_visualization(
+            scan.header.stamp, ranges, angle_min, angle_inc,
+            target_idx, closest_idx, alpha, lookahead
+        )
+
+    def publish_visualization(self, stamp, ranges, angle_min, angle_inc, 
+                               target_idx, closest_idx, target_alpha, lookahead):
+        """Publish markers showing gap follower internal state."""
+        markers = MarkerArray()
+        n = len(ranges)
+        frame_id = f"{self.hostname}/base_link"
+        
+        # 1. Processed scan as points (showing gaps)
+        scan_marker = Marker()
+        scan_marker.header.stamp = stamp
+        scan_marker.header.frame_id = frame_id
+        scan_marker.ns = "processed_scan"
+        scan_marker.id = 0
+        scan_marker.type = Marker.POINTS
+        scan_marker.action = Marker.ADD
+        scan_marker.scale.x = 0.03
+        scan_marker.scale.y = 0.03
+        
+        # Sample every 10th point to reduce marker size
+        for i in range(0, n, 10):
+            angle = angle_min + i * angle_inc
+            dist = ranges[i]
+            if dist > 0.1 and dist < 30.0:
+                p = Point()
+                p.x = dist * math.cos(angle)
+                p.y = dist * math.sin(angle)
+                p.z = 0.05
+                scan_marker.points.append(p)
+                
+                # Color: green if safe, red if too close
+                c = ColorRGBA()
+                if dist > SAFE_GAP:
+                    c.r, c.g, c.b = 0.0, 1.0, 0.0
+                else:
+                    c.r, c.g, c.b = 1.0, 0.3, 0.0
+                c.a = 0.8
+                scan_marker.colors.append(c)
+        
+        markers.markers.append(scan_marker)
+        
+        # 2. Best gap region highlight
+        gap_marker = Marker()
+        gap_marker.header.stamp = stamp
+        gap_marker.header.frame_id = frame_id
+        gap_marker.ns = "best_gap"
+        gap_marker.id = 1
+        gap_marker.type = Marker.LINE_STRIP
+        gap_marker.action = Marker.ADD
+        gap_marker.scale.x = 0.05
+        gap_marker.color.r = 0.0
+        gap_marker.color.g = 1.0
+        gap_marker.color.b = 0.5
+        gap_marker.color.a = 0.9
+        
+        # Find the gap region around target
+        gap_width = 30  # indices on each side
+        start_idx = max(0, target_idx - gap_width)
+        end_idx = min(n, target_idx + gap_width)
+        
+        for i in range(start_idx, end_idx, 2):
+            angle = angle_min + i * angle_inc
+            dist = min(ranges[i], 5.0)  # Cap for visualization
+            if dist > 0.1:
+                p = Point()
+                p.x = dist * math.cos(angle)
+                p.y = dist * math.sin(angle)
+                p.z = 0.1
+                gap_marker.points.append(p)
+        
+        markers.markers.append(gap_marker)
+        
+        # 3. Target direction arrow
+        target_marker = Marker()
+        target_marker.header.stamp = stamp
+        target_marker.header.frame_id = frame_id
+        target_marker.ns = "target"
+        target_marker.id = 2
+        target_marker.type = Marker.ARROW
+        target_marker.action = Marker.ADD
+        target_marker.scale.x = lookahead  # Arrow length
+        target_marker.scale.y = 0.08
+        target_marker.scale.z = 0.08
+        target_marker.color.r = 1.0
+        target_marker.color.g = 1.0
+        target_marker.color.b = 0.0
+        target_marker.color.a = 1.0
+        
+        # Arrow orientation from target angle
+        target_marker.pose.orientation.z = math.sin(target_alpha / 2)
+        target_marker.pose.orientation.w = math.cos(target_alpha / 2)
+        
+        markers.markers.append(target_marker)
+        
+        # 4. Safety bubble around closest obstacle
+        if 0 <= closest_idx < n and ranges[closest_idx] < 30.0:
+            bubble_marker = Marker()
+            bubble_marker.header.stamp = stamp
+            bubble_marker.header.frame_id = frame_id
+            bubble_marker.ns = "safety_bubble"
+            bubble_marker.id = 3
+            bubble_marker.type = Marker.CYLINDER
+            bubble_marker.action = Marker.ADD
+            
+            closest_angle = angle_min + closest_idx * angle_inc
+            closest_dist = ranges[closest_idx]
+            bubble_marker.pose.position.x = closest_dist * math.cos(closest_angle)
+            bubble_marker.pose.position.y = closest_dist * math.sin(closest_angle)
+            bubble_marker.pose.position.z = 0.05
+            bubble_marker.scale.x = BUBBLE_RADIUS * 2
+            bubble_marker.scale.y = BUBBLE_RADIUS * 2
+            bubble_marker.scale.z = 0.02
+            bubble_marker.color.r = 0.5
+            bubble_marker.color.g = 0.5
+            bubble_marker.color.b = 0.5
+            bubble_marker.color.a = 0.5
+            
+            markers.markers.append(bubble_marker)
+        
+        self.viz_pub.publish(markers)
 
     def publish_drive(self, stamp, steer: float, speed: float):
         msg = AckermannDriveStamped()

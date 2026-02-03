@@ -385,50 +385,123 @@ class GymBridge(Node):
         
         self.obstacle_marker_pub.publish(arr)
 
+    def _apply_obstacles_to_scan(self, racecar_idx):
+        """Apply obstacle intersections to laser scan data.
+        
+        For each scan ray, check if it intersects any obstacle closer than
+        the original scan reading. If so, use the obstacle distance.
+        """
+        original_ranges = list(self.obs["scans"][racecar_idx])
+        
+        if not self.obstacles:
+            return original_ranges
+        
+        # Get racecar position and orientation
+        car_x = self.obs["poses_x"][racecar_idx]
+        car_y = self.obs["poses_y"][racecar_idx]
+        car_theta = self.obs["poses_theta"][racecar_idx]
+        
+        # Scan parameters
+        angle_min = self.angle_min
+        angle_inc = self.angle_inc
+        num_rays = len(original_ranges)
+        
+        modified_ranges = original_ranges.copy()
+        
+        for ray_idx in range(num_rays):
+            # Calculate ray angle in world frame
+            ray_angle_local = angle_min + ray_idx * angle_inc
+            ray_angle_world = car_theta + ray_angle_local
+            
+            # Ray direction
+            ray_dx = np.cos(ray_angle_world)
+            ray_dy = np.sin(ray_angle_world)
+            
+            # Check intersection with each obstacle
+            for obs_x, obs_y, obs_radius in self.obstacles:
+                # Vector from car to obstacle center
+                to_obs_x = obs_x - car_x
+                to_obs_y = obs_y - car_y
+                
+                # Project onto ray direction
+                proj_dist = to_obs_x * ray_dx + to_obs_y * ray_dy
+                
+                if proj_dist <= 0:
+                    continue  # Obstacle is behind the ray origin
+                
+                # Perpendicular distance from ray to obstacle center
+                perp_dist = abs(to_obs_x * ray_dy - to_obs_y * ray_dx)
+                
+                if perp_dist < obs_radius:
+                    # Ray intersects obstacle
+                    # Calculate intersection distance (approximate - entry point)
+                    intersect_dist = proj_dist - np.sqrt(max(0, obs_radius**2 - perp_dist**2))
+                    
+                    if intersect_dist > 0 and intersect_dist < modified_ranges[ray_idx]:
+                        modified_ranges[ray_idx] = intersect_dist
+        
+        return modified_ranges
+
     def _publish_lap_point_marker(self, ts):
-        """Publish the lap point marker."""
+        """Publish the lap/finish line marker - checkered pattern like real races."""
         if self._lap_point_published:
             return
         
         arr = MarkerArray()
         
-        # Checkered flag pattern (simplified as a circle)
-        m = Marker()
-        m.header.stamp = ts
-        m.header.frame_id = "map"
-        m.ns = "lap_point"
-        m.id = 0
-        m.type = Marker.CYLINDER
-        m.action = Marker.ADD
-        m.pose.position.x = self.lap_point_position[0]
-        m.pose.position.y = self.lap_point_position[1]
-        m.pose.position.z = 0.01
-        m.scale.x = 4.0  # Diameter of lap detection zone
-        m.scale.y = 4.0
-        m.scale.z = 0.02
-        m.color.r = 1.0
-        m.color.g = 1.0
-        m.color.b = 0.0
-        m.color.a = 0.3
-        arr.markers.append(m)
+        # Create a checkered finish line pattern
+        line_width = 4.0  # Total width of the line
+        line_depth = 0.5  # Depth (thickness) of the line
+        checker_size = 0.25  # Size of each checker square
+        num_checkers = int(line_width / checker_size)
         
-        # Lap point text
+        marker_id = 0
+        for i in range(num_checkers):
+            for j in range(2):  # 2 rows of checkers
+                m = Marker()
+                m.header.stamp = ts
+                m.header.frame_id = "map"
+                m.ns = "lap_point"
+                m.id = marker_id
+                marker_id += 1
+                m.type = Marker.CUBE
+                m.action = Marker.ADD
+                
+                # Position checkers in a line perpendicular to track at origin
+                m.pose.position.x = self.lap_point_position[0] + (j - 0.5) * checker_size
+                m.pose.position.y = self.lap_point_position[1] + (i - num_checkers/2) * checker_size
+                m.pose.position.z = 0.01
+                
+                m.scale.x = checker_size * 0.95
+                m.scale.y = checker_size * 0.95
+                m.scale.z = 0.02
+                
+                # Alternating black and white pattern
+                if (i + j) % 2 == 0:
+                    m.color.r = m.color.g = m.color.b = 1.0  # White
+                else:
+                    m.color.r = m.color.g = m.color.b = 0.1  # Black
+                m.color.a = 1.0
+                
+                arr.markers.append(m)
+        
+        # Finish line text
         text = Marker()
         text.header.stamp = ts
         text.header.frame_id = "map"
         text.ns = "lap_point"
-        text.id = 1
+        text.id = marker_id
         text.type = Marker.TEXT_VIEW_FACING
         text.action = Marker.ADD
         text.pose.position.x = self.lap_point_position[0]
         text.pose.position.y = self.lap_point_position[1]
-        text.pose.position.z = 0.3
-        text.scale.z = 0.4
+        text.pose.position.z = 0.5
+        text.scale.z = 0.3
         text.color.r = 1.0
-        text.color.g = 0.8
-        text.color.b = 0.0
+        text.color.g = 1.0
+        text.color.b = 1.0
         text.color.a = 1.0
-        text.text = "🏁 LAP POINT"
+        text.text = "FINISH"
         arr.markers.append(text)
         
         self.lap_point_pub.publish(arr)
@@ -553,7 +626,9 @@ class GymBridge(Node):
             # Publish scans for each agent (using pre-allocated messages)
             for i in range(self.num_agents):
                 self._scan_msgs[i].header.stamp = ts
-                self._scan_msgs[i].ranges = list(self.obs["scans"][i])
+                # Apply obstacle modifications to scan data
+                ranges = self._apply_obstacles_to_scan(i)
+                self._scan_msgs[i].ranges = ranges
                 self.scan_publishers[i].publish(self._scan_msgs[i])
 
             # Publish transforms, odom, and markers ONCE (they loop internally)
