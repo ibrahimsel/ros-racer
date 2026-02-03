@@ -1,16 +1,24 @@
-FROM osrf/ros:humble-desktop-full
+FROM ros:humble-ros-core
 
 WORKDIR '/edge'
 
 SHELL ["/bin/bash", "-c"]
 
+# Install only necessary dependencies (ros-core is minimal)
 RUN apt-get update --fix-missing && apt-get install -y \
     python3-pip \
     python3-colcon-common-extensions \
     python3-vcstool \
+    python3-rosdep \
+    ros-humble-rclpy \
     ros-humble-ackermann-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-std-msgs \
+    ros-humble-geometry-msgs \
+    ros-humble-nav-msgs \
     ros-humble-rmw-cyclonedds-cpp \
-    git
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy local files instead of cloning muto repo
 COPY ./muto.repos /edge/muto.repos
@@ -22,6 +30,7 @@ COPY ./src/gap_follower /edge/src/gap_follower
 RUN mkdir -p /edge/src && \
     vcs import src < muto.repos && \
     source /opt/ros/humble/setup.bash && \
+    (rosdep init || true) && \
     rosdep update && \
     rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
     colcon build && \
