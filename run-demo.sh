@@ -1055,10 +1055,9 @@ main() {
     # phase_start_symphony
     phase_start_simulation
 
-    # PART 2: Direct Deployment
+    # PART 2: Direct Deployment (simplified to 2 variants + rollback demo)
     phase_direct_header
     phase_deploy_conservative
-    phase_deploy_balanced
     phase_deploy_aggressive
     phase_deploy_broken
 
