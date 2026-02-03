@@ -25,6 +25,7 @@ namespace multiagent_plugin
         // Initialize elements
         start_button_ = new QPushButton("Start Race", this);
         pause_button_ = new QPushButton("Pause/Resume Race", this);
+        reset_button_ = new QPushButton("Reset Race", this);
         agent_dropdown_ = new QComboBox(this);
         agent_dropdown_->addItem("Agent1");
         agent_dropdown_->addItem("Agent2");
@@ -41,6 +42,7 @@ namespace multiagent_plugin
         layout->addWidget(agent_dropdown_);
         layout->addWidget(start_button_);
         layout->addWidget(pause_button_);
+        layout->addWidget(reset_button_);
         setLayout(layout);
 
         node_ = std::make_shared<rclcpp::Node>("multiagent_plugin_node");
@@ -49,6 +51,7 @@ namespace multiagent_plugin
 
         start_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("sim_start", 10);
         pause_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("sim_pause", 10);
+        reset_publisher_ = node_->create_publisher<std_msgs::msg::Bool>("sim_reset", 10);
         agent_publisher_ = node_->create_publisher<std_msgs::msg::Int32>("racecar_to_estimate_pose", 10);
         ros_spin_timer_ = new QTimer(this);
         connect(ros_spin_timer_, SIGNAL(timeout()), this, SLOT(spinSome()));
@@ -56,6 +59,7 @@ namespace multiagent_plugin
         connect(agent_dropdown_, SIGNAL(currentIndexChanged(int)), this, SLOT(onAgentSelected(int)));
         connect(start_button_, SIGNAL(clicked()), this, SLOT(onStartButtonClicked()));
         connect(pause_button_, SIGNAL(clicked()), this, SLOT(onPauseButtonClicked()));
+        connect(reset_button_, SIGNAL(clicked()), this, SLOT(onResetButtonClicked()));
     }
 
     void MultiagentPanel::spinSome()

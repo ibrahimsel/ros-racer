@@ -35,6 +35,7 @@ namespace multiagent_plugin
     protected:
         QPushButton *start_button_;
         QPushButton *pause_button_;
+        QPushButton *reset_button_;
         QComboBox *agent_dropdown_;
         QLabel *lap_times_label_;
 
