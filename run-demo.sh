@@ -646,13 +646,13 @@ phase_deploy_conservative() {
     print_step "Deploy Conservative Algorithm (Direct)"
 
     print_narration "We'll deploy our first driving algorithm - a conservative gap follower.
-This algorithm prioritizes safety with slow speeds and wide safety margins."
+This algorithm prioritizes safety with moderate speeds and wide safety margins."
 
     echo "Stack details:"
     echo -e "  ${CYAN}Name:${NC}    gap_follower_conservative"
     echo -e "  ${CYAN}Version:${NC} 1.0.0"
-    echo -e "  ${CYAN}Speed:${NC}   0.5 m/s (slow)"
-    echo -e "  ${CYAN}Gap:${NC}     3.0 m (wide safety margin)"
+    echo -e "  ${CYAN}Speed:${NC}   1.5 m/s (moderate)"
+    echo -e "  ${CYAN}Gap:${NC}     2.5 m (wide safety margin)"
     echo -e "  ${CYAN}Method:${NC}  Direct ROS topic publish"
     echo ""
 
@@ -694,8 +694,8 @@ an Over-The-Air update with improved performance."
     echo "Stack details:"
     echo -e "  ${CYAN}Name:${NC}    gap_follower_balanced"
     echo -e "  ${CYAN}Version:${NC} 1.1.0"
-    echo -e "  ${CYAN}Speed:${NC}   1.5 m/s (medium)"
-    echo -e "  ${CYAN}Gap:${NC}     2.0 m (standard safety)"
+    echo -e "  ${CYAN}Speed:${NC}   2.5 m/s (fast)"
+    echo -e "  ${CYAN}Gap:${NC}     1.8 m (standard safety)"
     echo -e "  ${CYAN}Method:${NC}  Direct ROS topic publish"
     echo ""
 
@@ -734,8 +734,8 @@ This pushes the cars to their limits with high speeds and tight safety margins."
     echo "Stack details:"
     echo -e "  ${CYAN}Name:${NC}    gap_follower_aggressive"
     echo -e "  ${CYAN}Version:${NC} 1.2.0"
-    echo -e "  ${CYAN}Speed:${NC}   2.5 m/s (fast)"
-    echo -e "  ${CYAN}Gap:${NC}     1.2 m (tight safety margin)"
+    echo -e "  ${CYAN}Speed:${NC}   4.0 m/s (very fast)"
+    echo -e "  ${CYAN}Gap:${NC}     1.0 m (tight safety margin)"
     echo -e "  ${CYAN}Method:${NC}  Direct ROS topic publish"
     echo ""
 
