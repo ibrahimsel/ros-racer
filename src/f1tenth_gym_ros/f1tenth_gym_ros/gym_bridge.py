@@ -159,9 +159,18 @@ class GymBridge(Node):
         self.angle_inc = scan_fov / scan_beams
 
         self.pose_reset_arr = np.zeros((self.num_agents, 3))
-        for i in range(len(self.pose_reset_arr)):
-            # spawn racecars in a vertical column with 1.0 meters of distance between each
-            self.pose_reset_arr[i][0] += i
+        # Initial spawn: Racecar 1 facing -90° (clockwise from default)
+        # Others spawn 0.8m behind each other
+        initial_theta = -np.pi / 2  # 90° clockwise = facing negative Y
+        spacing = 2.0  # 2.0 meters between racecars
+        # "Behind" direction is opposite of facing
+        behind_x = np.cos(initial_theta + np.pi)  # +Y direction
+        behind_y = np.sin(initial_theta + np.pi)
+        
+        for i in range(self.num_agents):
+            self.pose_reset_arr[i][0] = i * spacing * behind_x  # x position
+            self.pose_reset_arr[i][1] = i * spacing * behind_y  # y position
+            self.pose_reset_arr[i][2] = initial_theta  # All face same direction (90° clockwise)
 
         # Store initial start positions for race reset
         self.start_positions = self.pose_reset_arr.copy()
@@ -193,6 +202,7 @@ class GymBridge(Node):
         self.br = TransformBroadcaster(self)
 
         self.active_racecar_to_reset_pose = 0
+        self.set_lap_point_mode = False  # When true, next pose estimate sets lap point
 
         self.lap_time_trackers = [LapTimeTracker()
                                   for _ in range(self.num_agents)]
@@ -297,6 +307,7 @@ class GymBridge(Node):
         # Lap point marker publisher
         self.lap_point_pub = self.create_publisher(MarkerArray, 'lap_point', 10)
         self.lap_point_position = (0.0, 0.0)  # Default lap point at origin
+        self.lap_point_orientation = -np.pi / 2  # 90° clockwise to match initial spawn
         self._lap_point_published = False
 
         # Track last drive message time for each racecar to detect stale commands
@@ -314,20 +325,46 @@ class GymBridge(Node):
         """Checks for collision and handles if there is any.
         
         Optimized: Uses vectorized numpy min instead of O(n × 1080) loop.
+        Also checks collision with spawned obstacles.
         """
         collision_threshold = 0.21
+        car_radius = 0.2  # Approximate racecar collision radius
         min_scans = np.min(self.obs["scans"], axis=1)  # Vectorized - one op for all agents
+        
         for i in range(self.num_agents):
-            if not self.agent_disqualified[i] and min_scans[i] <= collision_threshold:
+            if self.agent_disqualified[i]:
+                continue
+                
+            # Check wall collision (scan-based)
+            if min_scans[i] <= collision_threshold:
                 self.agent_disqualified[i] = True
                 self.lap_time_trackers[i].reset(restart=False)
-                self.get_logger().info(f"Racecar {i + 1} is disqualified")
+                self.get_logger().info(f"Racecar {i + 1} is disqualified (wall collision)")
+                continue
+            
+            # Check obstacle collision
+            car_x = self.obs["poses_x"][i]
+            car_y = self.obs["poses_y"][i]
+            for obs_x, obs_y, obs_radius in self.obstacles:
+                dist = np.sqrt((car_x - obs_x)**2 + (car_y - obs_y)**2)
+                if dist < (obs_radius + car_radius):
+                    self.agent_disqualified[i] = True
+                    self.lap_time_trackers[i].reset(restart=False)
+                    self.get_logger().info(f"Racecar {i + 1} is disqualified (obstacle collision)")
+                    break
 
     def choose_active_racecar_callback(self, racecar_index):
         """Handle racecar selection from plugin dropdown."""
-        self.active_racecar_to_reset_pose = racecar_index.data
-        # Disable spawn_all mode when manually selecting a racecar
-        self.spawn_all_mode = False
+        # Check if "Set Lap Point" was selected (index = num_agents)
+        if racecar_index.data >= self.num_agents:
+            self.set_lap_point_mode = True
+            self.spawn_all_mode = False
+            self.get_logger().info("Set Lap Point mode activated - click on the map to set finish line")
+        else:
+            self.active_racecar_to_reset_pose = racecar_index.data
+            self.set_lap_point_mode = False
+            # Disable spawn_all mode when manually selecting a racecar
+            self.spawn_all_mode = False
 
     def spawn_all_mode_callback(self, msg):
         """Toggle spawn_all mode from plugin."""
@@ -339,7 +376,7 @@ class GymBridge(Node):
         """Add an obstacle at the clicked point location."""
         x = msg.point.x
         y = msg.point.y
-        radius = 0.3  # Default obstacle radius
+        radius = 0.15  # Default obstacle radius
         
         self.obstacles.append((x, y, radius))
         self.get_logger().info(f"Added obstacle at ({x:.2f}, {y:.2f})")
@@ -451,9 +488,15 @@ class GymBridge(Node):
         
         # Create a checkered finish line pattern
         line_width = 4.0  # Total width of the line
-        line_depth = 0.5  # Depth (thickness) of the line
         checker_size = 0.25  # Size of each checker square
         num_checkers = int(line_width / checker_size)
+        
+        # Get orientation - line is perpendicular to facing direction
+        theta = self.lap_point_orientation
+        perp_theta = theta + np.pi / 2  # Perpendicular direction
+        
+        # Quaternion for marker orientation (rotate around Z axis)
+        quat = euler.euler2quat(0.0, 0.0, theta, axes="sxyz")
         
         marker_id = 0
         for i in range(num_checkers):
@@ -467,10 +510,23 @@ class GymBridge(Node):
                 m.type = Marker.CUBE
                 m.action = Marker.ADD
                 
-                # Position checkers in a line perpendicular to track at origin
-                m.pose.position.x = self.lap_point_position[0] + (j - 0.5) * checker_size
-                m.pose.position.y = self.lap_point_position[1] + (i - num_checkers/2) * checker_size
+                # Calculate position: spread along perpendicular, offset along facing
+                perp_offset = (i - num_checkers/2) * checker_size
+                forward_offset = (j - 0.5) * checker_size
+                
+                m.pose.position.x = (self.lap_point_position[0] + 
+                                     perp_offset * np.cos(perp_theta) +
+                                     forward_offset * np.cos(theta))
+                m.pose.position.y = (self.lap_point_position[1] + 
+                                     perp_offset * np.sin(perp_theta) +
+                                     forward_offset * np.sin(theta))
                 m.pose.position.z = 0.01
+                
+                # Apply orientation
+                m.pose.orientation.x = quat[1]
+                m.pose.orientation.y = quat[2]
+                m.pose.orientation.z = quat[3]
+                m.pose.orientation.w = quat[0]
                 
                 m.scale.x = checker_size * 0.95
                 m.scale.y = checker_size * 0.95
@@ -511,9 +567,11 @@ class GymBridge(Node):
         threshold_distance = 2.0
         current_x = self.obs["poses_x"][racecar_index]
         current_y = self.obs["poses_y"][racecar_index]
-        distance_from_origin = np.sqrt(current_x**2 + current_y**2)
+        # Calculate distance from the dynamic lap point position
+        lap_x, lap_y = self.lap_point_position
+        distance_from_lap_point = np.sqrt((current_x - lap_x)**2 + (current_y - lap_y)**2)
 
-        if distance_from_origin <= threshold_distance:
+        if distance_from_lap_point <= threshold_distance:
             if not self.agent_lap_completed[racecar_index]:
                 self.agent_lap_completed[racecar_index] = True
                 completion_time = self.lap_time_trackers[racecar_index].get_elapsed_time()
@@ -656,23 +714,32 @@ class GymBridge(Node):
         rqw = pose_msg.pose.pose.orientation.w
         _, _, rtheta = euler.quat2euler([rqw, rqx, rqy, rqz], axes="rxyz")
 
+        # Handle Set Lap Point mode (stays active until user selects a racecar)
+        if self.set_lap_point_mode:
+            self.lap_point_position = (rx, ry)
+            self.lap_point_orientation = rtheta  # Store orientation for marker
+            self._lap_point_published = False  # Force re-publish of marker
+            # Don't reset set_lap_point_mode - it stays active until user selects a racecar
+            self.get_logger().info(f"Lap point set to ({rx:.2f}, {ry:.2f}) at angle {np.degrees(rtheta):.1f}°")
+            return  # Don't reset car poses
+
         if self.spawn_all_mode:
-            # Spawn all racecars in a line from the pose estimate
-            # Calculate perpendicular direction for line formation
+            # Spawn all racecars in a perpendicular line from the pose estimate
+            # Calculate perpendicular direction for side-by-side formation
             perp_theta = rtheta + np.pi / 2  # Perpendicular to facing direction
-            spacing = 1.0  # 1 meter between racecars
+            spacing = 0.8  # 0.8 meters between racecars
             
             for i in range(self.num_agents):
-                # Offset from center: 0 is center, others spread out
+                # Offset from center: 0 is center, others spread out perpendicular
                 offset = (i - (self.num_agents - 1) / 2) * spacing
                 self.pose_reset_arr[i][0] = rx + offset * np.cos(perp_theta)
                 self.pose_reset_arr[i][1] = ry + offset * np.sin(perp_theta)
-                self.pose_reset_arr[i][2] = rtheta
+                self.pose_reset_arr[i][2] = rtheta  # All face same direction
                 # Clear disqualification for all racecars
                 self.agent_disqualified[i] = False
                 self.lap_time_trackers[i].reset(restart=True)
             
-            self.get_logger().info(f"Spawned all {self.num_agents} racecars in line formation")
+            self.get_logger().info(f"Spawned all {self.num_agents} racecars in line formation (0.8m apart)")
             self.spawn_all_mode = False  # Reset spawn_all mode after use
         else:
             # Single racecar pose reset (original behavior)
