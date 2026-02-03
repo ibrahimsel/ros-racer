@@ -468,6 +468,42 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /racecar3/trajectory
       Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: VelocityArrows
+      Namespaces:
+        velocity_arrows: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /velocity_arrows
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: SafetyZones
+      Namespaces:
+        safety_zones: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /safety_zones
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: RaceMarkers
+      Namespaces:
+        race_markers: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /race_markers
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

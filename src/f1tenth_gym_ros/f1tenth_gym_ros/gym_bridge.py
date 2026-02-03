@@ -36,6 +36,7 @@
 import os
 import gym
 import time
+import json
 import rclpy
 import numpy as np
 from collections import deque
@@ -163,13 +164,23 @@ class GymBridge(Node):
 
         self.obs, _, self.done, _ = self.env.reset(self.pose_reset_arr)
 
+        # Adaptive sensor publishing rate based on agent count
+        if self.num_agents <= 5:
+            sensor_rate = 40  # Hz
+        elif self.num_agents <= 10:
+            sensor_rate = 25  # Hz
+        else:
+            sensor_rate = 20  # Hz
+        sensor_period = 1.0 / sensor_rate
+        
         # Timer rates optimized for smooth simulation:
         # - Physics: 100 Hz (10ms) - matches typical simulator timestep
-        # - Sensor publish: 40 Hz (25ms) - typical lidar rate, reduces CPU load
-        # - Lap times: 10 Hz (100ms) - UI update rate, no need for 1000 Hz
+        # - Sensor publish: adaptive based on agent count
+        # - Lap times: 10 Hz (100ms) - UI update rate
         self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)  # 100 Hz physics
-        self.timer = self.create_timer(0.025, self.timer_callback)  # 40 Hz sensor publish
+        self.timer = self.create_timer(sensor_period, self.timer_callback)  # Adaptive sensor publish
         self.lap_time_timer = self.create_timer(0.1, self.publish_lap_times)  # 10 Hz lap times
+        self.get_logger().info(f"Sensor publish rate: {sensor_rate} Hz for {self.num_agents} agents")
         self.lap_time_publisher = self.create_publisher(
             String, 'lap_times', 10
         )
@@ -237,6 +248,15 @@ class GymBridge(Node):
         
         # Trajectory publish timer (5 Hz - less frequent than main loop)
         self.trajectory_timer = self.create_timer(0.2, self._publish_trajectories)
+        
+        # Additional visualization publishers
+        self.velocity_arrow_pub = self.create_publisher(MarkerArray, 'velocity_arrows', 10)
+        self.safety_zone_pub = self.create_publisher(MarkerArray, 'safety_zones', 10)
+        self.race_markers_pub = self.create_publisher(MarkerArray, 'race_markers', 10)
+        self.race_stats_pub = self.create_publisher(String, 'race_stats_json', 10)
+        
+        # Publish static race markers (start/finish line) once
+        self._start_finish_published = False
 
         # Pre-allocate message objects for performance (avoid allocation in callbacks)
         self._scan_msgs = [LaserScan() for _ in range(self.num_agents)]
@@ -410,6 +430,10 @@ class GymBridge(Node):
             self._publish_wheel_transforms(ts)
             self._publish_name_markers(ts)
             self._publish_speed_markers(ts)
+            self._publish_velocity_arrows(ts)
+            self._publish_safety_zones(ts)
+            self._publish_start_finish_line(ts)
+            self._publish_race_stats_json(ts)
             
             # Update trajectory history (paths published at 5 Hz by separate timer)
             self._update_trajectory_history()
@@ -564,6 +588,168 @@ class GymBridge(Node):
             path.header.frame_id = "map"
             path.poses = list(self.trajectory_history[i])
             self.path_publishers[i].publish(path)
+
+    def _publish_velocity_arrows(self, ts):
+        """Publish arrow markers showing velocity direction and magnitude."""
+        arr = MarkerArray()
+        for i in range(self.num_agents):
+            ns = f"{self.racecar_namespace}{i+1}"
+            vx = self.obs["linear_vels_x"][i]
+            vy = self.obs["linear_vels_y"][i]
+            speed = np.sqrt(vx**2 + vy**2)
+            
+            m = Marker()
+            m.header.stamp = ts
+            m.header.frame_id = f"{ns}/base_link"
+            m.ns = "velocity_arrows"
+            m.id = i
+            m.type = Marker.ARROW
+            m.action = Marker.ADD
+            
+            # Arrow points in direction of velocity, length proportional to speed
+            m.scale.x = max(0.1, speed * 0.3)  # Arrow length
+            m.scale.y = 0.05  # Arrow width
+            m.scale.z = 0.05  # Arrow height
+            
+            # Color gradient: green (slow) -> red (fast)
+            speed_ratio = min(speed / 8.0, 1.0)
+            if speed_ratio < 0.5:
+                m.color.r = speed_ratio * 2.0
+                m.color.g = 1.0
+            else:
+                m.color.r = 1.0
+                m.color.g = 1.0 - (speed_ratio - 0.5) * 2.0
+            m.color.b = 0.0
+            m.color.a = 0.8
+            
+            arr.markers.append(m)
+        self.velocity_arrow_pub.publish(arr)
+
+    def _publish_safety_zones(self, ts):
+        """Publish transparent circles around each agent showing safety zone."""
+        arr = MarkerArray()
+        collision_threshold = 0.21
+        warning_threshold = 0.5
+        
+        for i in range(self.num_agents):
+            ns = f"{self.racecar_namespace}{i+1}"
+            min_scan = np.min(self.obs["scans"][i])
+            
+            m = Marker()
+            m.header.stamp = ts
+            m.header.frame_id = f"{ns}/base_link"
+            m.ns = "safety_zones"
+            m.id = i
+            m.type = Marker.CYLINDER
+            m.action = Marker.ADD
+            
+            m.pose.position.z = 0.01  # Slightly above ground
+            m.scale.x = 0.6  # Diameter
+            m.scale.y = 0.6
+            m.scale.z = 0.02  # Very thin
+            
+            # Color based on proximity to obstacles
+            if self.agent_disqualified[i]:
+                m.color.r, m.color.g, m.color.b = 0.5, 0.5, 0.5  # Gray if disqualified
+            elif min_scan <= collision_threshold:
+                m.color.r, m.color.g, m.color.b = 1.0, 0.0, 0.0  # Red - collision!
+            elif min_scan <= warning_threshold:
+                m.color.r, m.color.g, m.color.b = 1.0, 1.0, 0.0  # Yellow - warning
+            else:
+                m.color.r, m.color.g, m.color.b = 0.0, 1.0, 0.0  # Green - safe
+            m.color.a = 0.3
+            
+            arr.markers.append(m)
+        self.safety_zone_pub.publish(arr)
+
+    def _publish_start_finish_line(self, ts):
+        """Publish start/finish line marker (once)."""
+        if self._start_finish_published:
+            return
+        
+        arr = MarkerArray()
+        
+        # Start/Finish line marker
+        line = Marker()
+        line.header.stamp = ts
+        line.header.frame_id = "map"
+        line.ns = "race_markers"
+        line.id = 0
+        line.type = Marker.LINE_STRIP
+        line.action = Marker.ADD
+        line.scale.x = 0.1  # Line width
+        line.color.r = 1.0
+        line.color.g = 1.0
+        line.color.b = 1.0
+        line.color.a = 1.0
+        
+        # Line across start position (perpendicular to track at origin)
+        from geometry_msgs.msg import Point
+        p1 = Point()
+        p1.x, p1.y, p1.z = -1.0, -2.0, 0.05
+        p2 = Point()
+        p2.x, p2.y, p2.z = -1.0, 2.0, 0.05
+        line.points = [p1, p2]
+        arr.markers.append(line)
+        
+        # START/FINISH text
+        text = Marker()
+        text.header.stamp = ts
+        text.header.frame_id = "map"
+        text.ns = "race_markers"
+        text.id = 1
+        text.type = Marker.TEXT_VIEW_FACING
+        text.action = Marker.ADD
+        text.pose.position.x = -1.0
+        text.pose.position.y = 0.0
+        text.pose.position.z = 0.5
+        text.scale.z = 0.4
+        text.color.r = 1.0
+        text.color.g = 1.0
+        text.color.b = 0.0
+        text.color.a = 1.0
+        text.text = "START / FINISH"
+        arr.markers.append(text)
+        
+        self.race_markers_pub.publish(arr)
+        self._start_finish_published = True
+
+    def _publish_race_stats_json(self, ts):
+        """Publish comprehensive race stats as JSON for UI consumption."""
+        stats = {
+            "timestamp": ts.sec + ts.nanosec * 1e-9,
+            "num_agents": self.num_agents,
+            "simulation_running": self.simulation_running,
+            "simulation_paused": self.simulation_paused,
+            "agents": []
+        }
+        
+        for i in range(self.num_agents):
+            speed = np.sqrt(
+                self.obs["linear_vels_x"][i]**2 + 
+                self.obs["linear_vels_y"][i]**2
+            )
+            min_scan = float(np.min(self.obs["scans"][i]))
+            
+            agent_stats = {
+                "id": i + 1,
+                "name": f"{self.racecar_namespace}{i+1}",
+                "position": {
+                    "x": float(self.obs["poses_x"][i]),
+                    "y": float(self.obs["poses_y"][i]),
+                    "theta": float(self.obs["poses_theta"][i])
+                },
+                "speed": float(speed),
+                "min_scan_distance": min_scan,
+                "current_lap_time": self.lap_time_trackers[i].get_elapsed_time(),
+                "best_lap_time": self.best_lap_times[i],
+                "disqualified": self.agent_disqualified[i]
+            }
+            stats["agents"].append(agent_stats)
+        
+        msg = String()
+        msg.data = json.dumps(stats)
+        self.race_stats_pub.publish(msg)
 
     def _publish_transforms(self, ts):
         """Publish base_link transforms for all agents in a single batch."""

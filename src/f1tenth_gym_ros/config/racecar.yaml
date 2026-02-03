@@ -1,10 +1,23 @@
 racecar:
+  # Default color palette for dynamic agent assignment (up to 20 agents)
+  default_colors:
+    - 'red'
+    - 'green'
+    - 'blue'
+    - 'yellow'
+    - 'magenta'
+    - 'cyan'
+    - 'orange'
+    - 'purple'
+    - 'pink'
+    - 'brown'
+  
   agent1:
     vehicle_name: 'racecar1'
-    color: 'black' # change between 'black', 'green', 'red', 'blue'
+    color: 'red'
   agent2:
     vehicle_name: 'racecar2'
     color: 'green'
   agent3:
     vehicle_name: 'racecar3'
-    color: 'red'
+    color: 'blue'
