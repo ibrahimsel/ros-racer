@@ -38,12 +38,13 @@ import gym
 import time
 import rclpy
 import numpy as np
+from collections import deque
 from transforms3d import euler
 from rclpy.node import Node
 from std_msgs.msg import Bool, Int32, String
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Transform
+from geometry_msgs.msg import Transform, PoseStamped
 from geometry_msgs.msg import TransformStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -221,6 +222,21 @@ class GymBridge(Node):
             self.drive_subscribers.append(racecar_drive_sub)
 
         self.marker_pub = self.create_publisher(MarkerArray, 'racecar_labels', 10)
+        
+        # Speed markers publisher (displays velocity above each car)
+        self.speed_marker_pub = self.create_publisher(MarkerArray, 'speed_markers', 10)
+        
+        # Trajectory path publishers (one per agent)
+        self.path_publishers = []
+        self.trajectory_history = []
+        for i in range(self.num_agents):
+            path_pub = self.create_publisher(
+                Path, f'{self.racecar_namespace}{i+1}/trajectory', 10)
+            self.path_publishers.append(path_pub)
+            self.trajectory_history.append(deque(maxlen=500))  # Last 500 positions
+        
+        # Trajectory publish timer (5 Hz - less frequent than main loop)
+        self.trajectory_timer = self.create_timer(0.2, self._publish_trajectories)
 
         # Pre-allocate message objects for performance (avoid allocation in callbacks)
         self._scan_msgs = [LaserScan() for _ in range(self.num_agents)]
@@ -393,6 +409,10 @@ class GymBridge(Node):
             self._publish_laser_transforms(ts)
             self._publish_wheel_transforms(ts)
             self._publish_name_markers(ts)
+            self._publish_speed_markers(ts)
+            
+            # Update trajectory history (paths published at 5 Hz by separate timer)
+            self._update_trajectory_history()
 
     def pose_reset_callback(self, pose_msg):
         rx = pose_msg.pose.pose.position.x
@@ -474,6 +494,76 @@ class GymBridge(Node):
             arr.markers.append(m)
         self.marker_pub.publish(arr)
 
+    def _publish_speed_markers(self, ts):
+        """Publish speed text markers above each racecar."""
+        arr = MarkerArray()
+        for i in range(self.num_agents):
+            ns = f"{self.racecar_namespace}{i+1}"
+            # Calculate speed from velocity components
+            speed = np.sqrt(
+                self.obs["linear_vels_x"][i]**2 + 
+                self.obs["linear_vels_y"][i]**2
+            )
+            
+            m = Marker()
+            m.header.stamp = ts
+            m.header.frame_id = f"{ns}/base_link"
+            m.ns = "speeds"
+            m.id = i
+            m.type = Marker.TEXT_VIEW_FACING
+            m.action = Marker.ADD
+            m.pose.position.z = 0.8  # Above the name marker
+            m.scale.z = 0.25  # Slightly smaller than name
+            
+            # Color gradient: green (slow) -> yellow (medium) -> red (fast)
+            # Assuming max speed around 8 m/s
+            speed_ratio = min(speed / 8.0, 1.0)
+            if speed_ratio < 0.5:
+                # Green to yellow
+                m.color.r = speed_ratio * 2.0
+                m.color.g = 1.0
+            else:
+                # Yellow to red
+                m.color.r = 1.0
+                m.color.g = 1.0 - (speed_ratio - 0.5) * 2.0
+            m.color.b = 0.0
+            m.color.a = 1.0
+            
+            m.text = f"{speed:.1f} m/s"
+            arr.markers.append(m)
+        self.speed_marker_pub.publish(arr)
+
+    def _update_trajectory_history(self):
+        """Record current positions for trajectory visualization."""
+        for i in range(self.num_agents):
+            pose = PoseStamped()
+            pose.header.frame_id = "map"
+            pose.header.stamp = self.get_clock().now().to_msg()
+            pose.pose.position.x = self.obs["poses_x"][i]
+            pose.pose.position.y = self.obs["poses_y"][i]
+            pose.pose.position.z = 0.0
+            quat = euler.euler2quat(0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
+            pose.pose.orientation.x = quat[1]
+            pose.pose.orientation.y = quat[2]
+            pose.pose.orientation.z = quat[3]
+            pose.pose.orientation.w = quat[0]
+            self.trajectory_history[i].append(pose)
+
+    def _publish_trajectories(self):
+        """Publish trajectory paths for all agents (called at 5 Hz)."""
+        if not self.simulation_running or self.simulation_paused:
+            return
+        
+        ts = self.get_clock().now().to_msg()
+        for i in range(self.num_agents):
+            if len(self.trajectory_history[i]) < 2:
+                continue
+            
+            path = Path()
+            path.header.stamp = ts
+            path.header.frame_id = "map"
+            path.poses = list(self.trajectory_history[i])
+            self.path_publishers[i].publish(path)
 
     def _publish_transforms(self, ts):
         """Publish base_link transforms for all agents in a single batch."""
