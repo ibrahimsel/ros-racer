@@ -113,11 +113,20 @@ class GymBridge(Node):
             Int32, 'racecar_to_estimate_pose', self.choose_active_racecar_callback, 10)
         self.spawn_all_subscriber = self.create_subscription(
             Bool, 'spawn_all_mode', self.spawn_all_mode_callback, 10)
+        self.spawn_obstacle_subscriber = self.create_subscription(
+            Bool, 'spawn_obstacle_mode', self.spawn_obstacle_mode_callback, 10)
+        self.set_lap_point_subscriber = self.create_subscription(
+            Bool, 'set_lap_point_mode', self.set_lap_point_mode_callback, 10)
+        
+        # Mode feedback publisher (tells plugin when action is complete)
+        self.mode_feedback_pub = self.create_publisher(String, 'mode_feedback', 10)
 
         # Additional attributes to manage the state of the simulation
         self.simulation_running = False
         self.simulation_paused = False
         self.spawn_all_mode = False  # When true, next pose estimate spawns all racecars
+        self.spawn_obstacle_mode = False  # When true, next pose estimate spawns obstacle
+        self.set_lap_point_mode = False  # When true, next pose estimate sets lap point
         self.agent_lap_completed = [False] * self.num_agents
         self.agent_disqualified = [False] * self.num_agents
 
@@ -202,7 +211,6 @@ class GymBridge(Node):
         self.br = TransformBroadcaster(self)
 
         self.active_racecar_to_reset_pose = 0
-        self.set_lap_point_mode = False  # When true, next pose estimate sets lap point
 
         self.lap_time_trackers = [LapTimeTracker()
                                   for _ in range(self.num_agents)]
@@ -354,23 +362,36 @@ class GymBridge(Node):
                     break
 
     def choose_active_racecar_callback(self, racecar_index):
-        """Handle racecar selection from plugin dropdown."""
-        # Check if "Set Lap Point" was selected (index = num_agents)
-        if racecar_index.data >= self.num_agents:
-            self.set_lap_point_mode = True
-            self.spawn_all_mode = False
-            self.get_logger().info("Set Lap Point mode activated - click on the map to set finish line")
-        else:
-            self.active_racecar_to_reset_pose = racecar_index.data
-            self.set_lap_point_mode = False
-            # Disable spawn_all mode when manually selecting a racecar
-            self.spawn_all_mode = False
+        """Handle racecar selection from plugin numbered buttons."""
+        self.active_racecar_to_reset_pose = racecar_index.data
+        # Disable all special modes when selecting a racecar
+        self.spawn_all_mode = False
+        self.spawn_obstacle_mode = False
+        self.set_lap_point_mode = False
 
     def spawn_all_mode_callback(self, msg):
         """Toggle spawn_all mode from plugin."""
         self.spawn_all_mode = msg.data
         if msg.data:
-            self.get_logger().info("Spawn All mode activated - next pose estimate will spawn all racecars")
+            self.spawn_obstacle_mode = False
+            self.set_lap_point_mode = False
+            self.get_logger().info("Spawn All mode activated - use 2D Pose Estimate")
+
+    def spawn_obstacle_mode_callback(self, msg):
+        """Toggle spawn_obstacle mode from plugin."""
+        self.spawn_obstacle_mode = msg.data
+        if msg.data:
+            self.spawn_all_mode = False
+            self.set_lap_point_mode = False
+            self.get_logger().info("Spawn Obstacle mode activated - use 2D Pose Estimate")
+
+    def set_lap_point_mode_callback(self, msg):
+        """Toggle set_lap_point mode from plugin."""
+        self.set_lap_point_mode = msg.data
+        if msg.data:
+            self.spawn_all_mode = False
+            self.spawn_obstacle_mode = False
+            self.get_logger().info("Set Lap Point mode activated - use 2D Pose Estimate")
 
     def clicked_point_callback(self, msg):
         """Add an obstacle at the clicked point location."""
@@ -714,15 +735,33 @@ class GymBridge(Node):
         rqw = pose_msg.pose.pose.orientation.w
         _, _, rtheta = euler.quat2euler([rqw, rqx, rqy, rqz], axes="rxyz")
 
-        # Handle Set Lap Point mode (stays active until user selects a racecar)
+        # Handle Set Lap Point mode
         if self.set_lap_point_mode:
             self.lap_point_position = (rx, ry)
             self.lap_point_orientation = rtheta  # Store orientation for marker
             self._lap_point_published = False  # Force re-publish of marker
-            # Don't reset set_lap_point_mode - it stays active until user selects a racecar
+            self.set_lap_point_mode = False
             self.get_logger().info(f"Lap point set to ({rx:.2f}, {ry:.2f}) at angle {np.degrees(rtheta):.1f}°")
+            # Publish feedback to plugin
+            feedback = String()
+            feedback.data = "lap_point_complete"
+            self.mode_feedback_pub.publish(feedback)
             return  # Don't reset car poses
 
+        # Handle Spawn Obstacle mode
+        if self.spawn_obstacle_mode:
+            radius = 0.15  # Default obstacle radius
+            self.obstacles.append((rx, ry, radius))
+            self.get_logger().info(f"Spawned obstacle at ({rx:.2f}, {ry:.2f})")
+            self._publish_obstacle_markers()
+            self.spawn_obstacle_mode = False
+            # Publish feedback to plugin
+            feedback = String()
+            feedback.data = "spawn_obstacle_complete"
+            self.mode_feedback_pub.publish(feedback)
+            return  # Don't reset car poses
+
+        # Handle Spawn All mode
         if self.spawn_all_mode:
             # Spawn all racecars in a perpendicular line from the pose estimate
             # Calculate perpendicular direction for side-by-side formation
@@ -740,7 +779,11 @@ class GymBridge(Node):
                 self.lap_time_trackers[i].reset(restart=True)
             
             self.get_logger().info(f"Spawned all {self.num_agents} racecars in line formation (0.8m apart)")
-            self.spawn_all_mode = False  # Reset spawn_all mode after use
+            self.spawn_all_mode = False
+            # Publish feedback to plugin
+            feedback = String()
+            feedback.data = "spawn_all_complete"
+            self.mode_feedback_pub.publish(feedback)
         else:
             # Single racecar pose reset (original behavior)
             for i in range(self.num_agents):
