@@ -39,7 +39,6 @@ setup(
     maintainer_email='info@composiv.ai',
     description='Bridge with multiagent support for using f1tenth_gym in ROS2',
     license='EPL-2.0',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'gym_bridge = f1tenth_gym_ros.gym_bridge:main',
