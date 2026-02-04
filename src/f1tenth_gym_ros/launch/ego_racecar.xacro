@@ -32,6 +32,34 @@
     <color rgba="0.0 1.0 0.0 1."/>
   </material>
 
+  <material name="yellow">
+    <color rgba="1.0 1.0 0.0 1."/>
+  </material>
+
+  <material name="magenta">
+    <color rgba="1.0 0.0 1.0 1."/>
+  </material>
+
+  <material name="cyan">
+    <color rgba="0.0 1.0 1.0 1."/>
+  </material>
+
+  <material name="orange">
+    <color rgba="1.0 0.5 0.0 1."/>
+  </material>
+
+  <material name="purple">
+    <color rgba="0.5 0.0 0.5 1."/>
+  </material>
+
+  <material name="pink">
+    <color rgba="1.0 0.75 0.8 1."/>
+  </material>
+
+  <material name="brown">
+    <color rgba="0.6 0.3 0.0 1."/>
+  </material>
+
   <link name="$(arg car)/base_link">
     <visual>
       <origin xyz="${wheelbase/2} 0 ${ground_offset+height/2}"/>
