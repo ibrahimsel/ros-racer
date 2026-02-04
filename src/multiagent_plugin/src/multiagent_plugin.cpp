@@ -35,8 +35,8 @@ namespace multiagent_plugin
           simulation_running_(false),
           simulation_paused_(false),
           spawn_all_mode_(false),
-          set_lap_point_mode_(false),
           spawn_obstacle_mode_(false),
+          set_lap_point_mode_(false),
           drive_ever_received_(false),
           selected_racecar_(0)
     {
