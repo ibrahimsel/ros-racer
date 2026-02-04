@@ -168,18 +168,18 @@ class GymBridge(Node):
         self.angle_inc = scan_fov / scan_beams
 
         self.pose_reset_arr = np.zeros((self.num_agents, 3))
-        # Initial spawn: Racecar 1 facing -90° (clockwise from default)
-        # Others spawn 0.8m behind each other
-        initial_theta = -np.pi / 2  # 90° clockwise = facing negative Y
-        spacing = 2.0  # 2.0 meters between racecars
+        # Initial spawn position for racecar1 (others spawn behind it)
+        initial_x = -29.224339
+        initial_y = -2.775948
+        initial_theta = 2.965379  # ~170° from quaternion (z=0.996, w=0.088)
+        spacing = 1.5  # 1.5 meters between racecars
         # "Behind" direction is opposite of facing
-        behind_x = np.cos(initial_theta + np.pi)  # +Y direction
-        behind_y = np.sin(initial_theta + np.pi)
-        
+        behind_theta = initial_theta + np.pi
+
         for i in range(self.num_agents):
-            self.pose_reset_arr[i][0] = i * spacing * behind_x  # x position
-            self.pose_reset_arr[i][1] = i * spacing * behind_y  # y position
-            self.pose_reset_arr[i][2] = initial_theta  # All face same direction (90° clockwise)
+            self.pose_reset_arr[i][0] = initial_x + i * spacing * np.cos(behind_theta)
+            self.pose_reset_arr[i][1] = initial_y + i * spacing * np.sin(behind_theta)
+            self.pose_reset_arr[i][2] = initial_theta  # All face same direction
 
         # Store initial start positions for race reset
         self.start_positions = self.pose_reset_arr.copy()
@@ -314,8 +314,8 @@ class GymBridge(Node):
         
         # Lap point marker publisher
         self.lap_point_pub = self.create_publisher(MarkerArray, 'lap_point', 10)
-        self.lap_point_position = (0.0, 0.0)  # Default lap point at origin
-        self.lap_point_orientation = -np.pi / 2  # 90° clockwise to match initial spawn
+        self.lap_point_position = (-39.787510, -12.662288)  # Default lap point
+        self.lap_point_orientation = -2.594919  # ~-149° from quaternion (z=-0.963, w=0.270)
         self._lap_point_published = False
 
         # Track last drive message time for each racecar to detect stale commands
