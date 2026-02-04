@@ -1,0 +1,16 @@
+{
+  mode: "router",
+  listen: {
+    endpoints: ["tcp/0.0.0.0:7447"]
+  },
+  scouting: {
+    multicast: { enabled: false },
+    gossip: { enabled: true }
+  },
+  transport: {
+    unicast: { max_sessions: 200 },
+    shared_memory: {
+      enabled: false
+    }
+  }
+}

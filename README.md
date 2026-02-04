@@ -30,6 +30,7 @@
 - [Technology Stack](#technology-stack)
 - [Benefits Demonstrated](#benefits-demonstrated)
 - [Getting Started](#getting-started)
+  - [Quick Start: Scaling to 20 Racecars](#quick-start-scaling-to-20-racecars)
 - [Learn More](#learn-more)
 - [Constraints](#constraints)
 - [Contributing](#contributing)
@@ -44,7 +45,7 @@ At its core, this project uses the [F1TENTH](https://f1tenth.org/) autonomous ra
 
 ### Key Capabilities
 
-- **Multi-Agent Simulation**: Three autonomous racecars running independently with the F1TENTH gym environment
+- **Multi-Agent Simulation**: Up to 20 autonomous racecars running independently with the F1TENTH gym environment
 - **OTA Software Updates**: Zero-downtime deployment of new driving algorithms to running vehicles
 - **Automatic Rollback**: Self-healing fleet that automatically reverts failed deployments
 - **Fleet Heterogeneity**: Deploy different algorithms to individual vehicles based on role or conditions
@@ -72,8 +73,8 @@ The simulation layer is built on the F1TENTH Gym environment with ROS 2 integrat
 
 - **F1TENTH Gym Simulator (`sim` container)**
   - Provides physics-based simulation of 1/10th scale autonomous racecars
-  - Supports multi-agent scenarios with up to 3 vehicles
-  - Publishes sensor data (`/racecar*/scan`, `/racecar*/odom`)
+  - Battle-tested multi-agent scenarios with up to 20 vehicles
+  - Publishes sensor data (`/racecar*/scan`, `/racecar*/odom`) where * is the racecar number
   - Subscribes to control commands (`/racecar*/drive`)
   - Runs RViz for 3D visualization
   - Uses CycloneDDS for ROS 2 middleware (low-latency, efficient)
@@ -348,6 +349,62 @@ Use Eclipse Symphony's REST API to manage deployments at scale, demonstrating cl
 ## Getting Started
 
 For detailed instructions, see [Quickstart](docs/quickstart.md) and [demo/README.md](demo/README.md).
+
+### Quick Start: Scaling to 20 Racecars
+
+The system supports scaling from 3 up to 20 racecars with configurable ROS middleware.
+
+#### Configuration Options
+
+| Variable | Default | Options | Description |
+|----------|---------|---------|-------------|
+| `NUM_AGENTS` | 3 | 1-20 | Number of racecars to spawn |
+| `RMW_IMPLEMENTATION` | `rmw_cyclonedds_cpp` | `rmw_cyclonedds_cpp`, `rmw_zenoh_cpp` | ROS middleware |
+| `DEPLOY_STAGGER` | 0.5 | 0.0-2.0 | Delay between vehicle deployments (seconds) |
+
+#### Basic Usage
+
+```bash
+# Default: 3 cars with CycloneDDS
+python3 scripts/generate-compose.py > docker-compose.yml
+docker compose up --build
+
+# Scale to 10 cars
+NUM_AGENTS=10 python3 scripts/generate-compose.py > docker-compose.yml
+docker compose up --build
+
+# Scale to 20 cars with Zenoh (recommended for 10+ agents)
+NUM_AGENTS=20 RMW_IMPLEMENTATION=rmw_zenoh_cpp python3 scripts/generate-compose.py > docker-compose.yml
+docker compose up --build
+```
+
+#### Deploy with Varied Driving Styles
+
+Generate per-vehicle stacks with cycling driving styles (aggressive → balanced → conservative):
+
+```bash
+# Generate stack files for all vehicles
+NUM_AGENTS=20 python3 scripts/generate-gap-follower-stacks.py
+
+# Deploy to all vehicles with staggered timing
+NUM_AGENTS=20 python3 demo/scripts/deploy-stack-fleet.py
+```
+
+#### RMW Selection Guide
+
+| Agents | Recommended RMW | Reason |
+|--------|-----------------|--------|
+| 1-10 | CycloneDDS (default) | Simpler setup, peer-to-peer DDS |
+| 10-20 | Zenoh | Router-based discovery, O(N) scaling |
+
+#### Resource Requirements (20 agents)
+
+| Component | CPU | Memory |
+|-----------|-----|--------|
+| sim | 4.0 | 4GB |
+| zenoh-router | 1.0 | 1GB |
+| edge (×20) | 0.5 each | 512MB each |
+| **Total** | ~16 cores | ~15GB |
 
 ---
 

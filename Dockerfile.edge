@@ -20,6 +20,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
     ros-humble-tf2-ros \
     ros-humble-visualization-msgs \
     ros-humble-rmw-cyclonedds-cpp \
+    ros-humble-rmw-zenoh-cpp \
     git
 
 # Install Python packages that rosdep might try to get via apt (not available in ros-core)
@@ -41,6 +42,12 @@ RUN mkdir -p /edge/src && \
     colcon build && \
     cd src/agent/symphony-sdk-python && pip3 install -e . && \
     rm -rf /var/lib/apt/lists/*
+
+# Zenoh session config for RMW switching
+COPY ./config/zenoh_session_config.json5 /etc/zenoh/session_config.json5
+ENV ZENOH_SESSION_CONFIG_URI=/etc/zenoh/session_config.json5
+# Default to CycloneDDS (can override via docker-compose env)
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

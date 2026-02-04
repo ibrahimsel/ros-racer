@@ -49,7 +49,8 @@ RUN apt-get update --fix-missing && \
                        wmctrl \
                        ros-humble-rviz2 \
                        ros-humble-rosbridge-server \
-                       ros-humble-rmw-cyclonedds-cpp
+                       ros-humble-rmw-cyclonedds-cpp \
+                       ros-humble-rmw-zenoh-cpp
 RUN apt-get -y dist-upgrade
 RUN pip3 install transforms3d
 
@@ -69,6 +70,12 @@ RUN source /opt/ros/humble/setup.bash && \
     apt-get update --fix-missing && \
     rosdep install -i --from-path src --rosdistro humble -y && \
     colcon build
+
+# Zenoh session config for RMW switching
+COPY ./config/zenoh_session_config.json5 /etc/zenoh/session_config.json5
+ENV ZENOH_SESSION_CONFIG_URI=/etc/zenoh/session_config.json5
+# Default to CycloneDDS (can override via docker-compose env)
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 WORKDIR '/sim_ws'
 CMD /bin/bash -c "/sim_ws/src/launch_sim.sh"

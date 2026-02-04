@@ -33,5 +33,6 @@ maximize_rviz() {
 # Start the maximize function in background
 maximize_rviz &
 
-# Launch ROS simulation
-ros2 launch f1tenth_gym_ros gym_bridge_launch.py
+# Launch ROS simulation with configurable number of agents
+NUM_AGENTS="${NUM_AGENTS:-3}"
+ros2 launch f1tenth_gym_ros gym_bridge_launch.py num_agents:=$NUM_AGENTS
