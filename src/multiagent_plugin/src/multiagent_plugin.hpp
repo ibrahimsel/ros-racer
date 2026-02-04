@@ -24,7 +24,9 @@
 #include <QGroupBox>
 #include <QFrame>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QButtonGroup>
+#include <QScrollArea>
 #include <vector>
 
 namespace multiagent_plugin
@@ -50,13 +52,21 @@ namespace multiagent_plugin
         QPushButton *set_lap_point_button_;
         QPushButton *clear_obstacles_button_;
         
-        // UI Elements - Racecar Selection (numbered buttons)
+        // UI Elements - Racecar Selection (numbered buttons in grid, max 6 per row)
+        QGridLayout *racecar_buttons_layout_;
         QButtonGroup *racecar_button_group_;
         std::vector<QPushButton*> racecar_buttons_;
-        
-        // UI Elements - Lap Time Cards
+        static const int BUTTONS_PER_ROW = 6;
+
+        // UI Elements - Lap Time Cards (scrollable, max 6 visible)
+        QScrollArea *lap_scroll_area_;
+        QWidget *lap_cards_container_;
         QGridLayout *lap_cards_layout_;
         std::vector<QFrame*> lap_cards_;
+        static const int LAP_CARDS_MAX_HEIGHT = 240;  // ~3 rows of cards
+
+        // Dynamic UI rebuild
+        void rebuildAgentUI(int new_num_agents);
         
         // ROS Node
         rclcpp::Node::SharedPtr node_;

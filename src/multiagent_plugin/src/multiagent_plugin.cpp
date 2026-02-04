@@ -23,6 +23,7 @@
 #include <QFont>
 #include <QFrame>
 #include <QButtonGroup>
+#include <QScrollArea>
 #include <cstdlib>
 #include <string>
 #include <sstream>
@@ -130,11 +131,12 @@ namespace multiagent_plugin
         QLabel *agent_label = new QLabel("Select racecar for pose estimation:", this);
         agent_layout->addWidget(agent_label);
         
-        // Create numbered buttons for racecar selection
-        QHBoxLayout *racecar_buttons_layout = new QHBoxLayout;
+        // Create numbered buttons for racecar selection (max 6 per row)
+        racecar_buttons_layout_ = new QGridLayout;
+        racecar_buttons_layout_->setSpacing(4);
         racecar_button_group_ = new QButtonGroup(this);
         racecar_button_group_->setExclusive(true);
-        
+
         for (int i = 0; i < num_agents_; i++) {
             QPushButton *btn = new QPushButton(QString::number(i + 1), this);
             btn->setCheckable(true);
@@ -142,58 +144,75 @@ namespace multiagent_plugin
             btn->setStyleSheet("QPushButton { background-color: #424242; color: white; font-weight: bold; font-size: 14px; border-radius: 5px; } QPushButton:hover { background-color: #616161; } QPushButton:checked { background-color: #2196F3; border: 2px solid #1565C0; }");
             racecar_button_group_->addButton(btn, i);
             racecar_buttons_.push_back(btn);
-            racecar_buttons_layout->addWidget(btn);
+            int row = i / BUTTONS_PER_ROW;
+            int col = i % BUTTONS_PER_ROW;
+            racecar_buttons_layout_->addWidget(btn, row, col);
         }
-        racecar_buttons_layout->addStretch();
-        
+
         // Select first racecar by default
         if (!racecar_buttons_.empty()) {
             racecar_buttons_[0]->setChecked(true);
         }
-        
-        agent_layout->addLayout(racecar_buttons_layout);
+
+        agent_layout->addLayout(racecar_buttons_layout_);
         agent_group->setLayout(agent_layout);
         main_layout->addWidget(agent_group);
 
         // === LAP TIMES SECTION ===
         QGroupBox *lap_group = new QGroupBox("Lap Times", this);
-        lap_cards_layout_ = new QGridLayout;
+        QVBoxLayout *lap_group_layout = new QVBoxLayout;
+
+        // Create scroll area for lap cards
+        lap_scroll_area_ = new QScrollArea(this);
+        lap_scroll_area_->setWidgetResizable(true);
+        lap_scroll_area_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        lap_scroll_area_->setStyleSheet("QScrollArea { border: none; background: transparent; }");
+
+        // Container widget for the grid of cards
+        lap_cards_container_ = new QWidget(this);
+        lap_cards_layout_ = new QGridLayout(lap_cards_container_);
         lap_cards_layout_->setSpacing(8);
-        
+        lap_cards_layout_->setContentsMargins(0, 0, 0, 0);
+
         // Create lap time cards for each racecar
         for (int i = 0; i < num_agents_; i++) {
             QFrame *card = new QFrame(this);
             card->setFrameShape(QFrame::Box);
             card->setStyleSheet("QFrame { background-color: #2d2d2d; border-radius: 5px; padding: 5px; }");
-            
+
             QVBoxLayout *card_layout = new QVBoxLayout(card);
             card_layout->setSpacing(2);
             card_layout->setContentsMargins(8, 8, 8, 8);
-            
+
             QLabel *name_label = new QLabel(QString("Racecar %1").arg(i + 1), card);
             name_label->setStyleSheet("font-weight: bold; color: #ffffff; font-size: 11px;");
-            
+
             QLabel *current_label = new QLabel("Current: --", card);
             current_label->setStyleSheet("color: #00ff00; font-size: 10px;");
             current_label->setObjectName("current");
-            
+
             QLabel *best_label = new QLabel("Best: --", card);
             best_label->setStyleSheet("color: #ffff00; font-size: 10px;");
             best_label->setObjectName("best");
-            
+
             card_layout->addWidget(name_label);
             card_layout->addWidget(current_label);
             card_layout->addWidget(best_label);
-            
+
             lap_cards_.push_back(card);
-            
+
             // Grid layout: 2 columns (flow horizontally, wrap to next row)
             int row = i / 2;
             int col = i % 2;
             lap_cards_layout_->addWidget(card, row, col);
         }
-        
-        lap_group->setLayout(lap_cards_layout_);
+
+        lap_scroll_area_->setWidget(lap_cards_container_);
+        // Max height for 3 rows of cards (6 cards total visible)
+        lap_scroll_area_->setMaximumHeight(LAP_CARDS_MAX_HEIGHT);
+
+        lap_group_layout->addWidget(lap_scroll_area_);
+        lap_group->setLayout(lap_group_layout);
         main_layout->addWidget(lap_group);
 
         main_layout->addStretch();
@@ -274,10 +293,110 @@ namespace multiagent_plugin
         }
     }
 
+    void MultiagentPanel::rebuildAgentUI(int new_num_agents)
+    {
+        if (new_num_agents == num_agents_ || new_num_agents <= 0 || new_num_agents > 20) {
+            return;
+        }
+
+        // Clear existing racecar buttons
+        for (auto *btn : racecar_buttons_) {
+            racecar_button_group_->removeButton(btn);
+            racecar_buttons_layout_->removeWidget(btn);
+            delete btn;
+        }
+        racecar_buttons_.clear();
+
+        // Clear existing lap cards
+        for (auto *card : lap_cards_) {
+            lap_cards_layout_->removeWidget(card);
+            delete card;
+        }
+        lap_cards_.clear();
+
+        num_agents_ = new_num_agents;
+
+        // Rebuild racecar buttons (max 6 per row)
+        for (int i = 0; i < num_agents_; i++) {
+            QPushButton *btn = new QPushButton(QString::number(i + 1), this);
+            btn->setCheckable(true);
+            btn->setFixedSize(40, 40);
+            btn->setStyleSheet("QPushButton { background-color: #424242; color: white; font-weight: bold; font-size: 14px; border-radius: 5px; } QPushButton:hover { background-color: #616161; } QPushButton:checked { background-color: #2196F3; border: 2px solid #1565C0; }");
+            racecar_button_group_->addButton(btn, i);
+            racecar_buttons_.push_back(btn);
+            int row = i / BUTTONS_PER_ROW;
+            int col = i % BUTTONS_PER_ROW;
+            racecar_buttons_layout_->addWidget(btn, row, col);
+            btn->show();  // Explicitly show dynamically created widget
+        }
+
+        // Select first racecar by default
+        if (!racecar_buttons_.empty()) {
+            racecar_buttons_[0]->setChecked(true);
+            selected_racecar_ = 0;
+        }
+
+        // Rebuild lap time cards
+        for (int i = 0; i < num_agents_; i++) {
+            QFrame *card = new QFrame(this);
+            card->setFrameShape(QFrame::Box);
+            card->setStyleSheet("QFrame { background-color: #2d2d2d; border-radius: 5px; padding: 5px; }");
+
+            QVBoxLayout *card_layout = new QVBoxLayout(card);
+            card_layout->setSpacing(2);
+            card_layout->setContentsMargins(8, 8, 8, 8);
+
+            QLabel *name_label = new QLabel(QString("Racecar %1").arg(i + 1), card);
+            name_label->setStyleSheet("font-weight: bold; color: #ffffff; font-size: 11px;");
+
+            QLabel *current_label = new QLabel("Current: --", card);
+            current_label->setStyleSheet("color: #00ff00; font-size: 10px;");
+            current_label->setObjectName("current");
+
+            QLabel *best_label = new QLabel("Best: --", card);
+            best_label->setStyleSheet("color: #ffff00; font-size: 10px;");
+            best_label->setObjectName("best");
+
+            card_layout->addWidget(name_label);
+            card_layout->addWidget(current_label);
+            card_layout->addWidget(best_label);
+
+            lap_cards_.push_back(card);
+
+            int row = i / 2;
+            int col = i % 2;
+            lap_cards_layout_->addWidget(card, row, col);
+            card->show();  // Explicitly show dynamically created widget
+        }
+
+        // Force layout update
+        update();
+    }
+
     void MultiagentPanel::updateRaceStats(const std_msgs::msg::String::SharedPtr msg)
     {
+        static bool first_message = true;
+        if (first_message) {
+            RCLCPP_INFO(node_->get_logger(), "First race_stats_json message received");
+            first_message = false;
+        }
+
         std::string data = msg->data;
-        
+
+        // Parse num_agents from JSON and rebuild UI if changed
+        size_t num_pos = data.find("\"num_agents\"");
+        if (num_pos != std::string::npos) {
+            num_pos = data.find(":", num_pos);
+            if (num_pos != std::string::npos) {
+                try {
+                    int new_num_agents = std::stoi(data.substr(num_pos + 1));
+                    rebuildAgentUI(new_num_agents);
+                } catch (const std::exception &e) {
+                    RCLCPP_WARN(node_->get_logger(), "Failed to parse num_agents: %s", e.what());
+                }
+            }
+        }
+
         // Parse simulation state
         bool running = data.find("\"simulation_running\": true") != std::string::npos ||
                        data.find("\"simulation_running\":true") != std::string::npos;
