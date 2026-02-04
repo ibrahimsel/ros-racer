@@ -763,22 +763,21 @@ class GymBridge(Node):
 
         # Handle Spawn All mode
         if self.spawn_all_mode:
-            # Spawn all racecars in a perpendicular line from the pose estimate
-            # Calculate perpendicular direction for side-by-side formation
-            perp_theta = rtheta + np.pi / 2  # Perpendicular to facing direction
-            spacing = 0.8  # 0.8 meters between racecars
-            
+            # Spawn all racecars in a vertical line (one behind the other)
+            # First car at pose estimate, others behind it
+            spacing = 1.5  # 1.5 meters between racecars (behind each other)
+            behind_theta = rtheta + np.pi  # Direction behind the facing direction
+
             for i in range(self.num_agents):
-                # Offset from center: 0 is center, others spread out perpendicular
-                offset = (i - (self.num_agents - 1) / 2) * spacing
-                self.pose_reset_arr[i][0] = rx + offset * np.cos(perp_theta)
-                self.pose_reset_arr[i][1] = ry + offset * np.sin(perp_theta)
+                # First car at exact position, others offset behind
+                self.pose_reset_arr[i][0] = rx + i * spacing * np.cos(behind_theta)
+                self.pose_reset_arr[i][1] = ry + i * spacing * np.sin(behind_theta)
                 self.pose_reset_arr[i][2] = rtheta  # All face same direction
                 # Clear disqualification for all racecars
                 self.agent_disqualified[i] = False
                 self.lap_time_trackers[i].reset(restart=True)
             
-            self.get_logger().info(f"Spawned all {self.num_agents} racecars in line formation (0.8m apart)")
+            self.get_logger().info(f"Spawned all {self.num_agents} racecars in vertical line ({spacing}m apart)")
             self.spawn_all_mode = False
             # Publish feedback to plugin
             feedback = String()
