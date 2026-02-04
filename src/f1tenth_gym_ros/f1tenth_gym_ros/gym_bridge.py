@@ -167,6 +167,12 @@ class GymBridge(Node):
         self.angle_max = scan_fov / 2.0
         self.angle_inc = scan_fov / scan_beams
 
+        # Precompute ray directions in local (car) frame for vectorized obstacle scanning
+        self._num_beams = scan_beams
+        self._ray_angles_local = np.linspace(self.angle_min, self.angle_max, scan_beams)
+        self._ray_cos_local = np.cos(self._ray_angles_local)  # shape: (num_beams,)
+        self._ray_sin_local = np.sin(self._ray_angles_local)  # shape: (num_beams,)
+
         self.pose_reset_arr = np.zeros((self.num_agents, 3))
         # Initial spawn position for racecar1 (others spawn behind it)
         initial_x = -29.224339
@@ -201,6 +207,8 @@ class GymBridge(Node):
         # - Lap times: 10 Hz (100ms) - UI update rate
         self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)  # 100 Hz physics
         self.timer = self.create_timer(sensor_period, self.timer_callback)  # Adaptive sensor publish
+        self.visualization_timer = self.create_timer(0.2, self._visualization_timer_callback)  # 5 Hz markers
+        self.stats_timer = self.create_timer(0.5, self._stats_timer_callback)  # 2 Hz JSON stats
         self.lap_time_timer = self.create_timer(0.1, self.publish_lap_times)  # 10 Hz lap times
         self.get_logger().info(f"Sensor publish rate: {sensor_rate} Hz for {self.num_agents} agents")
         self.lap_time_publisher = self.create_publisher(
@@ -295,6 +303,11 @@ class GymBridge(Node):
             # Pre-fill static odom fields
             self._odom_msgs[i].header.frame_id = "map"
             self._odom_msgs[i].child_frame_id = racecar_namespace + "/base_link"
+
+        # Per-tick cached values to avoid redundant computation across publishers
+        self._cached_quats = np.zeros((self.num_agents, 4))  # [w, x, y, z] per agent
+        self._cached_speeds = np.zeros(self.num_agents)
+        self._cached_min_scans = np.zeros(self.num_agents)
 
         self.racecar_drive_published = False
         self.last_log_time = time.time()
@@ -444,61 +457,52 @@ class GymBridge(Node):
         self.obstacle_marker_pub.publish(arr)
 
     def _apply_obstacles_to_scan(self, racecar_idx):
-        """Apply obstacle intersections to laser scan data.
-        
-        For each scan ray, check if it intersects any obstacle closer than
-        the original scan reading. If so, use the obstacle distance.
+        """Apply obstacle intersections to laser scan using numpy vectorization.
+
+        Instead of O(beams * obstacles) Python loops, this uses broadcasting
+        to vectorize the ray-circle intersection test across all beams.
+        Only the outer loop over obstacles (typically 0-10) remains.
         """
-        original_ranges = list(self.obs["scans"][racecar_idx])
-        
+        ranges = np.array(self.obs["scans"][racecar_idx], dtype=np.float64)
+
         if not self.obstacles:
-            return original_ranges
-        
-        # Get racecar position and orientation
+            return ranges.tolist()
+
+        # Get car pose
         car_x = self.obs["poses_x"][racecar_idx]
         car_y = self.obs["poses_y"][racecar_idx]
         car_theta = self.obs["poses_theta"][racecar_idx]
-        
-        # Scan parameters
-        angle_min = self.angle_min
-        angle_inc = self.angle_inc
-        num_rays = len(original_ranges)
-        
-        modified_ranges = original_ranges.copy()
-        
-        for ray_idx in range(num_rays):
-            # Calculate ray angle in world frame
-            ray_angle_local = angle_min + ray_idx * angle_inc
-            ray_angle_world = car_theta + ray_angle_local
-            
-            # Ray direction
-            ray_dx = np.cos(ray_angle_world)
-            ray_dy = np.sin(ray_angle_world)
-            
-            # Check intersection with each obstacle
-            for obs_x, obs_y, obs_radius in self.obstacles:
-                # Vector from car to obstacle center
-                to_obs_x = obs_x - car_x
-                to_obs_y = obs_y - car_y
-                
-                # Project onto ray direction
-                proj_dist = to_obs_x * ray_dx + to_obs_y * ray_dy
-                
-                if proj_dist <= 0:
-                    continue  # Obstacle is behind the ray origin
-                
-                # Perpendicular distance from ray to obstacle center
-                perp_dist = abs(to_obs_x * ray_dy - to_obs_y * ray_dx)
-                
-                if perp_dist < obs_radius:
-                    # Ray intersects obstacle
-                    # Calculate intersection distance (approximate - entry point)
-                    intersect_dist = proj_dist - np.sqrt(max(0, obs_radius**2 - perp_dist**2))
-                    
-                    if intersect_dist > 0 and intersect_dist < modified_ranges[ray_idx]:
-                        modified_ranges[ray_idx] = intersect_dist
-        
-        return modified_ranges
+
+        # Rotate precomputed local ray directions to world frame (vectorized)
+        cos_t = np.cos(car_theta)
+        sin_t = np.sin(car_theta)
+        ray_dx = cos_t * self._ray_cos_local - sin_t * self._ray_sin_local
+        ray_dy = sin_t * self._ray_cos_local + cos_t * self._ray_sin_local
+
+        # Loop over obstacles (typically 0-10), vectorize over beams (1080)
+        for obs_x, obs_y, obs_r in self.obstacles:
+            # Vector from car to obstacle center
+            to_x = obs_x - car_x
+            to_y = obs_y - car_y
+
+            # Project onto ray directions (dot product, vectorized over all beams)
+            proj = to_x * ray_dx + to_y * ray_dy  # shape: (num_beams,)
+
+            # Perpendicular distance from ray to obstacle center
+            perp = np.abs(to_x * ray_dy - to_y * ray_dx)  # shape: (num_beams,)
+
+            # Find rays that could hit this obstacle (in front and within radius)
+            hits = (proj > 0) & (perp < obs_r)
+
+            if np.any(hits):
+                # Compute intersection distance only for hitting rays
+                intersect = proj[hits] - np.sqrt(np.maximum(0, obs_r**2 - perp[hits]**2))
+
+                # Update ranges where intersection is closer and positive
+                valid = intersect > 0
+                ranges[hits] = np.where(valid, np.minimum(ranges[hits], intersect), ranges[hits])
+
+        return ranges.tolist()
 
     def _publish_lap_point_marker(self, ts):
         """Publish the lap/finish line marker - checkered pattern like real races."""
@@ -692,15 +696,57 @@ class GymBridge(Node):
             # Check lap completion for each agent
             for agent_idx in range(self.num_agents):
                 if self.is_lap_completed(agent_idx):
-                    self.lap_time_trackers[agent_idx].reset(restart=True)
+                    # Read elapsed time BEFORE reset (was buggy: reset then read returned ~0)
                     completion_time = self.lap_time_trackers[agent_idx].get_elapsed_time()
                     if completion_time > 5.0:
                         self.get_logger().info(
-                            f"Racecar {agent_idx + 1} completed a lap with time: {self.lap_time_trackers[agent_idx].get_elapsed_time():.4f}")
+                            f"Racecar {agent_idx + 1} completed a lap with time: {completion_time:.4f}")
+                    # Reset tracker AFTER capturing the time
+                    self.lap_time_trackers[agent_idx].reset(restart=True)
+
+    def _update_tick_cache(self):
+        """Compute derived values once per tick, reused by multiple publishers.
+
+        Caches quaternions, speeds, and min_scan values to avoid redundant
+        computation in _publish_odom, _publish_transforms, _publish_speed_markers, etc.
+        """
+        for i in range(self.num_agents):
+            # Cache quaternion (transforms3d returns [w, x, y, z])
+            self._cached_quats[i] = euler.euler2quat(
+                0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz"
+            )
+            # Cache speed
+            self._cached_speeds[i] = np.sqrt(
+                self.obs["linear_vels_x"][i]**2 +
+                self.obs["linear_vels_y"][i]**2
+            )
+            # Cache min scan distance
+            self._cached_min_scans[i] = np.min(self.obs["scans"][i])
+
+    def _visualization_timer_callback(self):
+        """Publish visualization markers at 5 Hz (reduced from 20-40 Hz sensor rate)."""
+        if not self.simulation_running or self.simulation_paused:
+            return
+        ts = self.get_clock().now().to_msg()
+        self._publish_name_markers(ts)
+        self._publish_speed_markers(ts)
+        self._publish_velocity_arrows(ts)
+        self._publish_safety_zones(ts)
+        self._publish_start_finish_line(ts)
+        self._publish_lap_point_marker(ts)
+
+    def _stats_timer_callback(self):
+        """Publish JSON race stats at 2 Hz (reduced from 20-40 Hz sensor rate)."""
+        if not self.simulation_running or self.simulation_paused:
+            return
+        self._publish_race_stats_json(self.get_clock().now().to_msg())
 
     def timer_callback(self):
         if self.simulation_running and not self.simulation_paused:
             ts = self.get_clock().now().to_msg()
+
+            # Update cached derived values once for this tick
+            self._update_tick_cache()
 
             # Publish scans for each agent (using pre-allocated messages)
             for i in range(self.num_agents):
@@ -710,19 +756,12 @@ class GymBridge(Node):
                 self._scan_msgs[i].ranges = ranges
                 self.scan_publishers[i].publish(self._scan_msgs[i])
 
-            # Publish transforms, odom, and markers ONCE (they loop internally)
+            # Publish transforms and odom (markers moved to 5 Hz visualization_timer)
             self._publish_odom(ts)
             self._publish_transforms(ts)
             self._publish_laser_transforms(ts)
             self._publish_wheel_transforms(ts)
-            self._publish_name_markers(ts)
-            self._publish_speed_markers(ts)
-            self._publish_velocity_arrows(ts)
-            self._publish_safety_zones(ts)
-            self._publish_start_finish_line(ts)
-            self._publish_lap_point_marker(ts)
-            self._publish_race_stats_json(ts)
-            
+
             # Update trajectory history (paths published at 5 Hz by separate timer)
             self._update_trajectory_history()
 
@@ -812,12 +851,12 @@ class GymBridge(Node):
             odom.header.stamp = ts
             odom.pose.pose.position.x = self.obs["poses_x"][i]
             odom.pose.pose.position.y = self.obs["poses_y"][i]
-            racecar_quat = euler.euler2quat(
-                0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
-            odom.pose.pose.orientation.x = racecar_quat[1]
-            odom.pose.pose.orientation.y = racecar_quat[2]
-            odom.pose.pose.orientation.z = racecar_quat[3]
-            odom.pose.pose.orientation.w = racecar_quat[0]
+            # Use cached quaternion (computed once per tick in _update_tick_cache)
+            quat = self._cached_quats[i]
+            odom.pose.pose.orientation.x = quat[1]
+            odom.pose.pose.orientation.y = quat[2]
+            odom.pose.pose.orientation.z = quat[3]
+            odom.pose.pose.orientation.w = quat[0]
             odom.twist.twist.linear.x = self.obs["linear_vels_x"][i]
             odom.twist.twist.linear.y = self.obs["linear_vels_y"][i]
             odom.twist.twist.angular.z = self.obs["ang_vels_z"][i]
@@ -861,11 +900,8 @@ class GymBridge(Node):
         arr = MarkerArray()
         for i in range(self.num_agents):
             ns = f"{self.racecar_namespace}{i+1}"
-            # Calculate speed from velocity components
-            speed = np.sqrt(
-                self.obs["linear_vels_x"][i]**2 + 
-                self.obs["linear_vels_y"][i]**2
-            )
+            # Use cached speed (computed once per tick in _update_tick_cache)
+            speed = self._cached_speeds[i]
             
             m = Marker()
             m.header.stamp = ts
@@ -897,14 +933,16 @@ class GymBridge(Node):
 
     def _update_trajectory_history(self):
         """Record current positions for trajectory visualization."""
+        ts = self.get_clock().now().to_msg()
         for i in range(self.num_agents):
             pose = PoseStamped()
             pose.header.frame_id = "map"
-            pose.header.stamp = self.get_clock().now().to_msg()
+            pose.header.stamp = ts  # Reuse single timestamp for all agents
             pose.pose.position.x = self.obs["poses_x"][i]
             pose.pose.position.y = self.obs["poses_y"][i]
             pose.pose.position.z = 0.0
-            quat = euler.euler2quat(0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
+            # Use cached quaternion (computed once per tick in _update_tick_cache)
+            quat = self._cached_quats[i]
             pose.pose.orientation.x = quat[1]
             pose.pose.orientation.y = quat[2]
             pose.pose.orientation.z = quat[3]
@@ -932,9 +970,8 @@ class GymBridge(Node):
         arr = MarkerArray()
         for i in range(self.num_agents):
             ns = f"{self.racecar_namespace}{i+1}"
-            vx = self.obs["linear_vels_x"][i]
-            vy = self.obs["linear_vels_y"][i]
-            speed = np.sqrt(vx**2 + vy**2)
+            # Use cached speed (computed once per tick in _update_tick_cache)
+            speed = self._cached_speeds[i]
             
             m = Marker()
             m.header.stamp = ts
@@ -971,8 +1008,9 @@ class GymBridge(Node):
         
         for i in range(self.num_agents):
             ns = f"{self.racecar_namespace}{i+1}"
-            min_scan = np.min(self.obs["scans"][i])
-            
+            # Use cached min_scan (computed once per tick in _update_tick_cache)
+            min_scan = self._cached_min_scans[i]
+
             m = Marker()
             m.header.stamp = ts
             m.header.frame_id = f"{ns}/base_link"
@@ -1063,12 +1101,10 @@ class GymBridge(Node):
         }
         
         for i in range(self.num_agents):
-            speed = np.sqrt(
-                self.obs["linear_vels_x"][i]**2 + 
-                self.obs["linear_vels_y"][i]**2
-            )
-            min_scan = float(np.min(self.obs["scans"][i]))
-            
+            # Use cached values (computed once per tick in _update_tick_cache)
+            speed = self._cached_speeds[i]
+            min_scan = self._cached_min_scans[i]
+
             agent_stats = {
                 "id": i + 1,
                 "name": f"{self.racecar_namespace}{i+1}",
@@ -1078,7 +1114,7 @@ class GymBridge(Node):
                     "theta": float(self.obs["poses_theta"][i])
                 },
                 "speed": float(speed),
-                "min_scan_distance": min_scan,
+                "min_scan_distance": float(min_scan),
                 "current_lap_time": self.lap_time_trackers[i].get_elapsed_time(),
                 "best_lap_time": self.best_lap_times[i],
                 "disqualified": self.agent_disqualified[i]
@@ -1098,12 +1134,12 @@ class GymBridge(Node):
             racecar_t.translation.x = self.obs["poses_x"][i]
             racecar_t.translation.y = self.obs["poses_y"][i]
             racecar_t.translation.z = 0.0
-            racecar_quat = euler.euler2quat(
-                0.0, 0.0, self.obs["poses_theta"][i], axes="sxyz")
-            racecar_t.rotation.x = racecar_quat[1]
-            racecar_t.rotation.y = racecar_quat[2]
-            racecar_t.rotation.z = racecar_quat[3]
-            racecar_t.rotation.w = racecar_quat[0]
+            # Use cached quaternion (computed once per tick in _update_tick_cache)
+            quat = self._cached_quats[i]
+            racecar_t.rotation.x = quat[1]
+            racecar_t.rotation.y = quat[2]
+            racecar_t.rotation.z = quat[3]
+            racecar_t.rotation.w = quat[0]
             racecar_ts = TransformStamped()
             racecar_ts.transform = racecar_t
             racecar_ts.header.stamp = ts
