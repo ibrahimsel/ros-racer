@@ -1,568 +1,2891 @@
 Panels:
-  - Class: rviz_common/Displays
-    Help Height: 78
-    Name: Displays
-    Property Tree Widget:
-      Expanded:
-        - /Global Options1
-        - /Map1/Topic1
-      Splitter Ratio: 0.5
-    Tree Height: 576
-  - Class: rviz_common/Selection
-    Name: Selection
-  - Class: rviz_common/Tool Properties
+- Class: rviz_common/Displays
+  Help Height: 78
+  Name: Displays
+  Property Tree Widget:
     Expanded:
-      - /2D Goal Pose1
-      - /Publish Point1
-    Name: Tool Properties
-    Splitter Ratio: 0.5886790156364441
-  - Class: rviz_common/Views
-    Expanded:
-      - /Current View1
-    Name: Views
+    - /Global Options1
+    - /Map1/Topic1
     Splitter Ratio: 0.5
-  - Class: multiagent_plugin/MultiagentPanel
-    Name: MultiagentPanel
+  Tree Height: 576
+- Class: rviz_common/Selection
+  Name: Selection
+- Class: rviz_common/Tool Properties
+  Expanded:
+  - /2D Goal Pose1
+  - /Publish Point1
+  Name: Tool Properties
+  Splitter Ratio: 0.59
+- Class: rviz_common/Views
+  Expanded:
+  - /Current View1
+  Name: Views
+  Splitter Ratio: 0.5
+- Class: multiagent_plugin/MultiagentPanel
+  Name: MultiagentPanel
 Visualization Manager:
-  Class: ""
+  Class: ''
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
-      Class: rviz_default_plugins/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.029999999329447746
-        Value: Lines
-      Name: Grid
-      Normal Cell Count: 0
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Plane: XY
-      Plane Cell Count: 10
-      Reference Frame: <Fixed Frame>
+  - Alpha: 0.5
+    Cell Size: 1
+    Class: rviz_default_plugins/Grid
+    Color: 160; 160; 164
+    Enabled: true
+    Line Style:
+      Line Width: 0.03
+      Value: Lines
+    Name: Grid
+    Normal Cell Count: 0
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Plane: XY
+    Plane Cell Count: 10
+    Reference Frame: <Fixed Frame>
+    Value: true
+  - Alpha: 0.7
+    Class: rviz_default_plugins/Map
+    Color Scheme: map
+    Draw Behind: false
+    Enabled: true
+    Name: Map
+    Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /map
+    Update Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /map_updates
+    Use Timestamp: false
+    Value: true
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
       Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: true
-      Name: Map
-      Topic:
-        Depth: 5
-        Durability Policy: Transient Local
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /map
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /map_updates
-      Use Timestamp: false
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan1
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar1/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
       Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 6.7457594871521
-        Min Value: -15.018223762512207
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan2
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar2/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan3
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar3/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan4
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar4/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan5
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar5/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan6
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar6/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan7
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar7/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan8
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar8/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan9
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar9/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan10
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar10/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan11
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar11/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan12
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar12/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan13
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar13/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan14
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar14/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan15
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar15/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan16
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar16/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan17
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar17/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan18
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar18/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan19
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar19/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10.0
+      Min Value: 0.0
+      Value: true
+    Axis: X
+    Channel Name: intensity
+    Class: rviz_default_plugins/LaserScan
+    Color: 255; 255; 255
+    Color Transformer: AxisColor
+    Decay Time: 0
+    Enabled: false
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: LaserScan20
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.1
+    Style: Flat Squares
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar20/scan
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: false
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar1/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar1/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
         Value: true
-      Axis: X
-      Channel Name: intensity
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 255; 255
-      Color Transformer: AxisColor
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar1/scan
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 25.054685592651367
-        Min Value: 20.39041519165039
+      racecar1/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
         Value: true
-      Axis: X
-      Channel Name: intensity
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 255; 255
-      Color Transformer: AxisColor
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar2/scan
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 4.013498306274414
-        Min Value: -27.094528198242188
+      racecar1/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
         Value: true
-      Axis: X
-      Channel Name: intensity
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 255; 255
-      Color Transformer: AxisColor
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar3/scan
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
-    - Alpha: 1
-      Class: rviz_default_plugins/RobotModel
-      Collision Enabled: false
-      Description File: ""
-      Description Source: Topic
-      Description Topic:
-        Depth: 5
-        Durability Policy: Transient Local
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar1/robot_description
-      Enabled: true
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-        racecar1/back_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar1/back_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar1/base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar1/front_left_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar1/front_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar1/front_right_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar1/front_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar1/laser_model:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-      Mass Properties:
-        Inertia: false
-        Mass: false
-      Name: RobotModel
-      TF Prefix: ""
-      Update Interval: 0
-      Value: true
-      Visual Enabled: true
-    - Alpha: 1
-      Class: rviz_default_plugins/RobotModel
-      Collision Enabled: false
-      Description File: ""
-      Description Source: Topic
-      Description Topic:
-        Depth: 5
-        Durability Policy: Transient Local
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar2/robot_description
-      Enabled: true
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-        racecar2/back_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar2/back_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar2/base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar2/front_left_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar2/front_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar2/front_right_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar2/front_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar2/laser_model:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-      Mass Properties:
-        Inertia: false
-        Mass: false
-      Name: RobotModel
-      TF Prefix: ""
-      Update Interval: 0
-      Value: true
-      Visual Enabled: true
-    - Alpha: 1
-      Class: rviz_default_plugins/RobotModel
-      Collision Enabled: false
-      Description File: ""
-      Description Source: Topic
-      Description Topic:
-        Depth: 5
-        Durability Policy: Transient Local
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar3/robot_description
-      Enabled: true
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-        racecar3/back_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar3/back_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar3/base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar3/front_left_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar3/front_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar3/front_right_hinge:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        racecar3/front_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        racecar3/laser_model:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-      Mass Properties:
-        Inertia: false
-        Mass: false
-      Name: RobotModel
-      TF Prefix: ""
-      Update Interval: 0
-      Value: true
-      Visual Enabled: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: MarkerArray
-      Namespaces:
-        labels: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar_labels
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: SpeedMarkers
-      Namespaces:
-        speeds: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /speed_markers
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 255; 0; 0
-      Enabled: true
-      Head Diameter: 0.10000000149011612
-      Head Length: 0.10000000149011612
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: Trajectory1
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0.05000000074505806
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.05000000074505806
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar1/trajectory
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 0; 255; 0
-      Enabled: true
-      Head Diameter: 0.10000000149011612
-      Head Length: 0.10000000149011612
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: Trajectory2
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0.05000000074505806
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.05000000074505806
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar2/trajectory
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 0; 0; 255
-      Enabled: true
-      Head Diameter: 0.10000000149011612
-      Head Length: 0.10000000149011612
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: Trajectory3
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0.05000000074505806
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.05000000074505806
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar3/trajectory
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
-      Name: VelocityArrows
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /velocity_arrows
-      Value: false
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
-      Name: SafetyZones
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /safety_zones
-      Value: false
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
-      Name: RaceMarkers
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /race_markers
-      Value: false
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: Obstacles
-      Namespaces:
-        obstacles: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /obstacles
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: LapPoint
-      Namespaces:
-        lap_point: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /lap_point
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: GapViz1
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar1/gap_viz
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: GapViz2
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar2/gap_viz
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: GapViz3
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /racecar3/gap_viz
-      Value: true
+      racecar1/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar1/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar1/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar1/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar1/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel1
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar2/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar2/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar2/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar2/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar2/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar2/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar2/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar2/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar2/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel2
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar3/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar3/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar3/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar3/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar3/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar3/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar3/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar3/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar3/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel3
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar4/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar4/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar4/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar4/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar4/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar4/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar4/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar4/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar4/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel4
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar5/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar5/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar5/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar5/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar5/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar5/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar5/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar5/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar5/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel5
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar6/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar6/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar6/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar6/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar6/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar6/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar6/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar6/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar6/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel6
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar7/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar7/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar7/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar7/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar7/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar7/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar7/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar7/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar7/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel7
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar8/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar8/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar8/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar8/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar8/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar8/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar8/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar8/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar8/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel8
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar9/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar9/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar9/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar9/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar9/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar9/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar9/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar9/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar9/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel9
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar10/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar10/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar10/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar10/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar10/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar10/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar10/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar10/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar10/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel10
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar11/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar11/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar11/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar11/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar11/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar11/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar11/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar11/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar11/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel11
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar12/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar12/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar12/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar12/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar12/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar12/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar12/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar12/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar12/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel12
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar13/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar13/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar13/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar13/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar13/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar13/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar13/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar13/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar13/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel13
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar14/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar14/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar14/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar14/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar14/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar14/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar14/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar14/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar14/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel14
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar15/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar15/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar15/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar15/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar15/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar15/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar15/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar15/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar15/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel15
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar16/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar16/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar16/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar16/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar16/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar16/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar16/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar16/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar16/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel16
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar17/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar17/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar17/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar17/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar17/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar17/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar17/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar17/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar17/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel17
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar18/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar18/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar18/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar18/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar18/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar18/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar18/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar18/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar18/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel18
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar19/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar19/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar19/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar19/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar19/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar19/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar19/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar19/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar19/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel19
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description File: ''
+    Description Source: Topic
+    Description Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar20/robot_description
+    Enabled: true
+    Links:
+      All Links Enabled: true
+      Expand Joint Details: false
+      Expand Link Details: false
+      Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      racecar20/back_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar20/back_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar20/base_link:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar20/front_left_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar20/front_left_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar20/front_right_hinge:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+      racecar20/front_right_wheel:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+      racecar20/laser_model:
+        Alpha: 1
+        Show Axes: false
+        Show Trail: false
+        Value: true
+    Mass Properties:
+      Inertia: false
+      Mass: false
+    Name: RobotModel20
+    TF Prefix: ''
+    Update Interval: 0
+    Value: true
+    Visual Enabled: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: MarkerArray
+    Namespaces:
+      labels: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar_labels
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: SpeedMarkers
+    Namespaces:
+      speeds: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /speed_markers
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 0; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory1
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar1/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 255; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory2
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar2/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory3
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar3/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 255; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory4
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar4/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory5
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar5/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 255; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory6
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar6/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 128; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory7
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar7/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 128; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory8
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar8/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 192; 203
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory9
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar9/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 153; 76; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory10
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar10/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 0; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory11
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar11/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 255; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory12
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar12/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory13
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar13/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 255; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory14
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar14/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory15
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar15/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 0; 255; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory16
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar16/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 128; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory17
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar17/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 128; 0; 255
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory18
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar18/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 255; 192; 203
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory19
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar19/trajectory
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 153; 76; 0
+    Enabled: true
+    Head Diameter: 0.1
+    Head Length: 0.1
+    Length: 0.3
+    Line Style: Lines
+    Line Width: 0.03
+    Name: Trajectory20
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0.05
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.03
+    Shaft Diameter: 0.05
+    Shaft Length: 0.1
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar20/trajectory
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: false
+    Name: VelocityArrows
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /velocity_arrows
+    Value: false
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: false
+    Name: SafetyZones
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /safety_zones
+    Value: false
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: false
+    Name: RaceMarkers
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /race_markers
+    Value: false
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: Obstacles
+    Namespaces:
+      obstacles: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /obstacles
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: LapPoint
+    Namespaces:
+      lap_point: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /lap_point
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz1
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar1/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz2
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar2/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz3
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar3/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz4
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar4/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz5
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar5/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz6
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar6/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz7
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar7/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz8
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar8/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz9
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar9/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz10
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar10/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz11
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar11/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz12
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar12/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz13
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar13/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz14
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar14/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz15
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar15/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz16
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar16/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz17
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar17/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz18
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar18/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz19
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar19/gap_viz
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: GapViz20
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /racecar20/gap_viz
+    Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -570,38 +2893,38 @@ Visualization Manager:
     Frame Rate: 10
   Name: root
   Tools:
-    - Class: rviz_default_plugins/Interact
-      Hide Inactive Objects: true
-    - Class: rviz_default_plugins/MoveCamera
-    - Class: rviz_default_plugins/Select
-    - Class: rviz_default_plugins/FocusCamera
-    - Class: rviz_default_plugins/Measure
-      Line color: 128; 128; 0
-    - Class: rviz_default_plugins/SetInitialPose
-      Covariance x: 0.25
-      Covariance y: 0.25
-      Covariance yaw: 0.06853891909122467
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /initialpose
-    - Class: rviz_default_plugins/SetGoal
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /goal_pose
-    - Class: rviz_default_plugins/PublishPoint
-      Single click: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /clicked_point
+  - Class: rviz_default_plugins/Interact
+    Hide Inactive Objects: true
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/Select
+  - Class: rviz_default_plugins/FocusCamera
+  - Class: rviz_default_plugins/Measure
+    Line color: 128; 128; 0
+  - Class: rviz_default_plugins/SetInitialPose
+    Covariance x: 0.25
+    Covariance y: 0.25
+    Covariance yaw: 0.07
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /initialpose
+  - Class: rviz_default_plugins/SetGoal
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /goal_pose
+  - Class: rviz_default_plugins/PublishPoint
+    Single click: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /clicked_point
   Transformation:
     Current:
       Class: rviz_default_plugins/TF
@@ -609,25 +2932,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/ThirdPersonFollower
-      Distance: 11.03872013092041
+      Distance: 11.0
       Enable Stereo Rendering:
-        Stereo Eye Separation: 0.05999999865889549
+        Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.29950588941574097
-        Y: 0.8132138252258301
-        Z: -9.5367431640625e-07
+        X: 0.3
+        Y: 0.8
+        Z: 0.0
       Focal Shape Fixed Size: false
-      Focal Shape Size: 0.05000000074505806
+      Focal Shape Size: 0.05
       Invert Z Axis: false
       Name: Current View
-      Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6203983426094055
-      Target Frame: racecar2/base_link
+      Near Clip Distance: 0.01
+      Pitch: 0.62
+      Target Frame: racecar1/base_link
       Value: ThirdPersonFollower (rviz_default_plugins)
-      Yaw: 2.4303982257843018
+      Yaw: 2.43
     Saved: ~
 Window Geometry:
   Displays:
