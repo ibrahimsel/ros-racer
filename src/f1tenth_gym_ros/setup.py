@@ -42,7 +42,6 @@ setup(
     entry_points={
         'console_scripts': [
             'gym_bridge = f1tenth_gym_ros.gym_bridge:main',
-            'gap_follower = f1tenth_gym_ros.gap_follower:main',
         ],
     },
 )
