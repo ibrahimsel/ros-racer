@@ -328,7 +328,8 @@ deploy_stack() {
     local stack_filename=$(basename "$stack_json")
 
     # Build the command - use the mounted /edge/demo directory
-    local cmd="source /opt/ros/humble/setup.bash && source /edge/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
+    # Pass NUM_AGENTS and DEPLOY_DISCOVERY_WAIT so deploy-stack.py knows fleet size
+    local cmd="export NUM_AGENTS=${NUM_AGENTS} DEPLOY_DISCOVERY_WAIT=${DEPLOY_DISCOVERY_WAIT} && source /opt/ros/humble/setup.bash && source /edge/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
 
     if [ -n "$vehicle" ]; then
         cmd="$cmd --vehicle $vehicle"

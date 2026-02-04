@@ -100,13 +100,18 @@ if USE_ZENOH:
     sim_env.append('ZENOH_ROUTER_CHECK_ATTEMPTS=-1')
     sim_depends['zenoh-router'] = {'condition': 'service_healthy'}
 
+# Scale sim resources based on number of agents
+# Base: 2 CPU + 0.3 per agent, 2GB + 150MB per agent
+sim_cpus = min(2.0 + (NUM_AGENTS * 0.3), 16.0)  # Cap at 16 CPUs
+sim_memory = f"{min(2048 + (NUM_AGENTS * 150), 16384)}M"  # Cap at 16GB
+
 services['sim'] = {
     'build': {'context': '.', 'dockerfile': 'Dockerfile.sim'},
     'volumes': ['.:/sim_ws/src/f1tenth_gym_ros'],
     'environment': sim_env,
     'depends_on': sim_depends,
     'networks': ['x11'],
-    'deploy': {'resources': {'limits': {'cpus': '4.0', 'memory': '4G'}}}
+    'deploy': {'resources': {'limits': {'cpus': str(sim_cpus), 'memory': sim_memory}}}
 }
 
 # Add edge services

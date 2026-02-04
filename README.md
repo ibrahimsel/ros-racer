@@ -401,10 +401,12 @@ NUM_AGENTS=20 python3 demo/scripts/deploy-stack-fleet.py
 
 | Component | CPU | Memory |
 |-----------|-----|--------|
-| sim | 4.0 | 4GB |
+| sim | 8.0 | 5GB |
 | zenoh-router | 1.0 | 1GB |
 | edge (×20) | 0.5 each | 512MB each |
-| **Total** | ~16 cores | ~15GB |
+| **Total** | ~19 cores | ~16GB |
+
+Note: Sim resources scale automatically (2 + 0.3 per agent CPUs, 2GB + 150MB per agent).
 
 ---
 
