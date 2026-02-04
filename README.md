@@ -31,6 +31,7 @@
 - [Benefits Demonstrated](#benefits-demonstrated)
 - [Getting Started](#getting-started)
 - [Learn More](#learn-more)
+- [Constraints](#constraints)
 - [Contributing](#contributing)
 - [Support](#support)
 - [License and Copyright](#license-and-copyright)
@@ -360,6 +361,9 @@ For detailed instructions, see [Quickstart](docs/quickstart.md) and [demo/README
 
 ---
 
+## Constraints
+
+- Initial Racecar & Lap spawn points: They are hardcoded according to `example_map`. When you change the map, it will fumble, you'd have to readjust the default spawning points.
 
 ## Contributing
 
