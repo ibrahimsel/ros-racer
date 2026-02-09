@@ -1,123 +1,161 @@
-# MIT License
-
-# Copyright (c) 2020 Hongrui Zheng
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-# Copyright (c) 2025 Composiv.ai
-#
-# This program and the accompanying materials are made available under the
-# terms of the Eclipse Public License 2.0 which is available at
-# http://www.eclipse.org/legal/epl-2.0.
-#
-# SPDX-License-Identifier: EPL-2.0
-#
-# Contributors:
-#   Composiv.ai - initial API and implementation
-#
-
+# Auto-generated for 5 racecars
+# Regenerate: NUM_AGENTS=5 python3 scripts/generate-compose.py > docker-compose.yml
 services:
-  # Artifact server for serving stack packages
   artifact-server:
-    image: python:3.11-slim
-    working_dir: /artifacts
-    command: python -m http.server 9090
+    image: nginx:alpine
     volumes:
-      - ./demo/artifacts:/artifacts:ro
+    - ./demo/artifacts:/usr/share/nginx/html:ro
+    - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
-      - x11
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9090')"]
-      interval: 5s
-      retries: 3
-      start_period: 5s
-      timeout: 5s
-
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
   novnc:
     image: theasp/novnc:latest
     environment:
-      - DISPLAY_WIDTH=1920
-      - DISPLAY_HEIGHT=1080
-      - RUN_XTERM=no
-      - RUN_FLUXBOX=yes
+    - DISPLAY_WIDTH=1920
+    - DISPLAY_HEIGHT=1080
+    - RUN_XTERM=no
+    - RUN_FLUXBOX=yes
     ports:
-      - "18080:8080"
+    - 18080:8080
     networks:
-      - x11
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/vnc.html"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-      timeout: 5s
-
+    - x11
   sim:
     build:
       context: .
       dockerfile: Dockerfile.sim
     volumes:
-      - .:/sim_ws/src/f1tenth_gym_ros
+    - .:/sim_ws/src/f1tenth_gym_ros
     environment:
-      - DISPLAY=novnc:0.0
-      - ROS_DOMAIN_ID=2
-      - ROS_LOCALHOST_ONLY=0
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-    stdin_open: true
-    tty: true
+    - DISPLAY=novnc:0.0
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    - NUM_AGENTS=5
     depends_on:
       novnc:
-        condition: service_healthy
+        condition: service_started
     networks:
-      - x11
-
-  edge: &edge_base
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '3.5'
+          memory: 2798M
+  edge:
     build:
       context: .
       dockerfile: Dockerfile.edge
     hostname: racecar1
     environment:
-      - ROS_DOMAIN_ID=2
-      - ROS_LOCALHOST_ONLY=0
-      - VEHICLE_NAME=racecar1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - VEHICLE_NAME=racecar1
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     volumes:
-      - ./demo:/edge/demo:ro
+    - ./demo:/edge/demo:ro
     networks:
-      - x11
-
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
   edge2:
-    <<: *edge_base
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
     hostname: racecar2
     environment:
-      - ROS_DOMAIN_ID=2
-      - ROS_LOCALHOST_ONLY=0
-      - VEHICLE_NAME=racecar2
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - VEHICLE_NAME=racecar2
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+    - ./demo:/edge/demo:ro
+    networks:
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
   edge3:
-    <<: *edge_base
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
     hostname: racecar3
     environment:
-      - ROS_DOMAIN_ID=2
-      - ROS_LOCALHOST_ONLY=0
-      - VEHICLE_NAME=racecar3
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - VEHICLE_NAME=racecar3
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+    - ./demo:/edge/demo:ro
+    networks:
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+  edge4:
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
+    hostname: racecar4
+    environment:
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - VEHICLE_NAME=racecar4
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+    - ./demo:/edge/demo:ro
+    networks:
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+  edge5:
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
+    hostname: racecar5
+    environment:
+    - ROS_DOMAIN_ID=2
+    - ROS_LOCALHOST_ONLY=0
+    - VEHICLE_NAME=racecar5
+    - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+    - ./demo:/edge/demo:ro
+    networks:
+    - x11
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 networks:
-  x11:
+  x11: {}
+

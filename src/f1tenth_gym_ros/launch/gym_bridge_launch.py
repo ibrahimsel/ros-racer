@@ -36,42 +36,46 @@
 import os
 import yaml
 from launch import LaunchDescription
-from launch.substitutions import Command
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
-def generate_launch_description():
-    ld = LaunchDescription()
+def launch_setup(context):
     sim_config = os.path.join(
         get_package_share_directory("f1tenth_gym_ros"), "config", "sim.yaml"
     )
 
     config_dict = yaml.safe_load(open(sim_config, "r"))
-    num_agents = config_dict["gym_bridge"]["ros__parameters"]["num_agent"]
     map_path = config_dict["gym_bridge"]["ros__parameters"]["map_path"]
-    default_map_path = os.path.join(get_package_share_directory("f1tenth_gym_ros"),
-                                    "maps",
-                                    "example_map")
-    
+    default_map_path = os.path.join(
+        get_package_share_directory("f1tenth_gym_ros"), "maps", "example_map"
+    )
+
+    # Resolve num_agents from launch argument (which defaults to YAML value)
+    num_agents = int(LaunchConfiguration("num_agents").perform(context))
+
     print(f"Starting with {num_agents} agents.")
+
+    # Pass num_agent as parameter override so it takes precedence over YAML
     gym_bridge_node = Node(
         package="f1tenth_gym_ros",
         executable="gym_bridge",
         name="gym_bridge",
-        parameters=[sim_config],
+        parameters=[sim_config, {"num_agent": num_agents}],
     )
 
-    racecar_config = os.path.join(
-        get_package_share_directory("f1tenth_gym_ros"), "config", "racecar.yaml"
-    )
-    racecar_config_dict = yaml.safe_load(open(racecar_config, "r"))
+    # Color palette for agents (cycles if more agents than colors)
+    colors = [
+        "red", "green", "blue", "yellow", "magenta",
+        "cyan", "orange", "purple", "pink", "brown",
+    ]
     robot_state_publishers = []
-    
 
     for i in range(num_agents):
-        vehicle_name = racecar_config_dict["racecar"][f"agent{i+1}"]["vehicle_name"]
-        color = racecar_config_dict["racecar"][f"agent{i+1}"]["color"]
+        vehicle_name = f"racecar{i + 1}"
+        color = colors[i % len(colors)]
         robot_state_publishers.append(
             Node(
                 package="robot_state_publisher",
@@ -83,18 +87,19 @@ def generate_launch_description():
                             [
                                 "xacro ",
                                 os.path.join(
-                                    get_package_share_directory('f1tenth_gym_ros'),
+                                    get_package_share_directory("f1tenth_gym_ros"),
                                     "launch",
                                     "ego_racecar.xacro",
                                 ),
                                 f" car:={vehicle_name}",
-                                f" car_color:={color}"
+                                f" car_color:={color}",
                             ]
                         )
                     }
                 ],
                 remappings=[
-                    ("/robot_description", f"/{vehicle_name}/robot_description")],
+                    ("/robot_description", f"/{vehicle_name}/robot_description")
+                ],
             )
         )
 
@@ -117,7 +122,9 @@ def generate_launch_description():
         executable="map_server",
         parameters=[
             {
-                "yaml_filename": map_path + ".yaml" if map_path else default_map_path + ".yaml"
+                "yaml_filename": map_path + ".yaml"
+                if map_path
+                else default_map_path + ".yaml"
             },
             {"topic": "map"},
             {"frame_id": "map"},
@@ -138,11 +145,29 @@ def generate_launch_description():
         ],
     )
 
-    # finalize
-    ld.add_action(rviz_node)
-    ld.add_action(gym_bridge_node)
-    ld.add_action(nav_lifecycle_node)
-    ld.add_action(map_server_node)
-    for i in robot_state_publishers:
-        ld.add_action(i)
-    return ld
+    return [
+        rviz_node,
+        gym_bridge_node,
+        nav_lifecycle_node,
+        map_server_node,
+        *robot_state_publishers,
+    ]
+
+
+def generate_launch_description():
+    sim_config = os.path.join(
+        get_package_share_directory("f1tenth_gym_ros"), "config", "sim.yaml"
+    )
+    config_dict = yaml.safe_load(open(sim_config, "r"))
+    yaml_num_agents = config_dict["gym_bridge"]["ros__parameters"]["num_agent"]
+
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "num_agents",
+                default_value=str(yaml_num_agents),
+                description="Number of agents to spawn (overrides sim.yaml value)",
+            ),
+            OpaqueFunction(function=launch_setup),
+        ]
+    )

@@ -1,28 +1,50 @@
-FROM osrf/ros:humble-desktop-full
+FROM ros:humble-ros-core
 
 WORKDIR '/edge'
 
 SHELL ["/bin/bash", "-c"]
 
+# Install only necessary dependencies (ros-core is minimal)
 RUN apt-get update --fix-missing && apt-get install -y \
     python3-pip \
     python3-colcon-common-extensions \
     python3-vcstool \
+    python3-rosdep \
+    ros-humble-rclpy \
     ros-humble-ackermann-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-std-msgs \
+    ros-humble-geometry-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-tf2-msgs \
+    ros-humble-tf2-ros \
+    ros-humble-visualization-msgs \
     ros-humble-rmw-cyclonedds-cpp \
     git
 
-    
-RUN git clone https://github.com/ibrahimsel/muto.git -b test/e2e
-WORKDIR '/edge/muto'
-COPY ./muto.repos /edge/muto/muto.repos
-RUN vcs import src < muto.repos 
-RUN source /opt/ros/humble/setup.bash && \
+# Install Python packages that rosdep might try to get via apt (not available in ros-core)
+RUN pip3 install --no-cache-dir jsonschema requests paho-mqtt
+
+# Copy local files instead of cloning muto repo
+COPY ./muto.repos /edge/muto.repos
+COPY ./launch /edge/launch
+COPY ./config /edge/config
+COPY ./src/gap_follower /edge/src/gap_follower
+
+# Import muto components and build
+RUN mkdir -p /edge/src && \
+    vcs import src < muto.repos && \
+    source /opt/ros/humble/setup.bash && \
+    (rosdep init || true) && \
     rosdep update && \
-    rosdep install -y -r --from-paths ./src --ignore-src --rosdistro humble && \
+    rosdep install -y -r --ignore-src --from-paths ./src --rosdistro humble --skip-keys="python3-jsonschema python3-requests python3-paho-mqtt" && \
     colcon build && \
-    cd src/agent/symphony-sdk-python && pip3 install -e .
-    
+    cd src/agent/symphony-sdk-python && pip3 install -e . && \
+    rm -rf /var/lib/apt/lists/*
+
+# Use CycloneDDS
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

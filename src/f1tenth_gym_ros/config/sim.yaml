@@ -41,3 +41,6 @@ gym_bridge:
 
     # number of agents to spawn in simulation (should be 1 <= num_agent <= 3)
     num_agent: 3
+
+    # auto-start simulation on launch (set to false to require manual Start button click)
+    auto_start: true
