@@ -42,62 +42,53 @@ namespace multiagent_plugin
         // UI Elements - Status Section
         QFrame *status_led_;
         QLabel *status_label_;
-        
+
         // UI Elements - Race Control
         QPushButton *start_button_;
         QPushButton *pause_button_;
         QPushButton *reset_button_;
         QPushButton *spawn_all_button_;
-        QPushButton *spawn_obstacle_button_;
-        QPushButton *set_lap_point_button_;
-        QPushButton *clear_obstacles_button_;
-        
+
         // UI Elements - Racecar Selection (numbered buttons in grid, max 6 per row)
         QGridLayout *racecar_buttons_layout_;
         QButtonGroup *racecar_button_group_;
         std::vector<QPushButton*> racecar_buttons_;
         static const int BUTTONS_PER_ROW = 6;
 
-        // UI Elements - Lap Time Cards (scrollable, max 6 visible)
-        QScrollArea *lap_scroll_area_;
-        QWidget *lap_cards_container_;
-        QGridLayout *lap_cards_layout_;
-        std::vector<QFrame*> lap_cards_;
-        static const int LAP_CARDS_MAX_HEIGHT = 240;  // ~3 rows of cards
+        // UI Elements - Status Cards (scrollable, max 6 visible)
+        QScrollArea *status_scroll_area_;
+        QWidget *status_cards_container_;
+        QGridLayout *status_cards_layout_;
+        std::vector<QFrame*> status_cards_;
+        static const int STATUS_CARDS_MAX_HEIGHT = 240;  // ~3 rows of cards
 
         // Dynamic UI rebuild
         void rebuildAgentUI(int new_num_agents);
-        
+
         // ROS Node
         rclcpp::Node::SharedPtr node_;
         int num_agents_;
-        
+
         // Publishers
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr start_publisher_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reset_publisher_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pause_publisher_;
         rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr agent_publisher_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spawn_all_publisher_;
-        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spawn_obstacle_publisher_;
-        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr set_lap_point_publisher_;
-        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr clear_obstacles_publisher_;
-        
+
         // Subscribers
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr race_stats_subscriber_;
-        rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_feedback_subscriber_;
-        
+
         // State tracking
         bool simulation_running_;
         bool simulation_paused_;
         bool spawn_all_mode_;
-        bool spawn_obstacle_mode_;
-        bool set_lap_point_mode_;
         bool drive_ever_received_;
         int selected_racecar_;
-        
+
         // Helper methods
         void updateStatusIndicator(const QString &state, const QString &color);
-        void updateLapTimeCards(const std::string &data);
+        void updateStatusCards(const std::string &data);
         void setupStylesheet();
 
     protected Q_SLOTS:
@@ -105,15 +96,11 @@ namespace multiagent_plugin
         void onResetButtonClicked();
         void onPauseButtonClicked();
         void onSpawnAllToggled(bool checked);
-        void onSpawnObstacleToggled(bool checked);
-        void onSetLapPointToggled(bool checked);
-        void onClearObstaclesClicked();
         void onRacecarSelected(int index);
         void spinSome();
-        
+
     private:
         void updateRaceStats(const std_msgs::msg::String::SharedPtr msg);
-        void onModeFeedback(const std_msgs::msg::String::SharedPtr msg);
     };
 
 } // namespace multiagent_plugin
