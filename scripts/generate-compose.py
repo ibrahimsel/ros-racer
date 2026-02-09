@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """
-Generate docker-compose.yml for N racecars with configurable RMW.
+Generate docker-compose.yml for N racecars.
 
 Usage:
-    # Default: 3 cars with CycloneDDS
+    # Default: 3 cars
     python3 scripts/generate-compose.py > docker-compose.yml
 
-    # 20 cars with Zenoh (recommended for 10+ agents)
-    NUM_AGENTS=20 RMW_IMPLEMENTATION=rmw_zenoh_cpp python3 scripts/generate-compose.py > docker-compose.yml
+    # 20 cars
+    NUM_AGENTS=20 python3 scripts/generate-compose.py > docker-compose.yml
 """
 import os
 import sys
 import yaml
 
 NUM_AGENTS = int(os.environ.get('NUM_AGENTS', sys.argv[1] if len(sys.argv) > 1 else 3))
-RMW = os.environ.get('RMW_IMPLEMENTATION', 'rmw_cyclonedds_cpp')
-USE_ZENOH = RMW == 'rmw_zenoh_cpp'
 
 
 def generate_edge_service(index: int) -> dict:
@@ -25,13 +23,8 @@ def generate_edge_service(index: int) -> dict:
         'ROS_DOMAIN_ID=2',
         'ROS_LOCALHOST_ONLY=0',
         f'VEHICLE_NAME={vehicle_name}',
-        f'RMW_IMPLEMENTATION={RMW}',
+        'RMW_IMPLEMENTATION=rmw_cyclonedds_cpp',
     ]
-
-    depends_on = {}
-    if USE_ZENOH:
-        env.append('ZENOH_ROUTER_CHECK_ATTEMPTS=-1')
-        depends_on['zenoh-router'] = {'condition': 'service_healthy'}
 
     service = {
         'build': {'context': '.', 'dockerfile': 'Dockerfile.edge'},
@@ -46,9 +39,6 @@ def generate_edge_service(index: int) -> dict:
             }
         }
     }
-
-    if depends_on:
-        service['depends_on'] = depends_on
 
     return service
 
@@ -72,33 +62,15 @@ services = {
     },
 }
 
-# Add zenoh-router only if using Zenoh RMW
-if USE_ZENOH:
-    services['zenoh-router'] = {
-        'build': {'context': '.', 'dockerfile': 'Dockerfile.zenoh-router'},
-        'hostname': 'zenoh-router',
-        'networks': ['x11'],
-        'healthcheck': {
-            'test': ['CMD', 'nc', '-z', 'localhost', '7447'],
-            'interval': '5s',
-            'retries': 3,
-            'start_period': '10s'
-        }
-    }
-
 # Sim service
 sim_env = [
     'DISPLAY=novnc:0.0',
     'ROS_DOMAIN_ID=2',
     'ROS_LOCALHOST_ONLY=0',
-    f'RMW_IMPLEMENTATION={RMW}',
+    'RMW_IMPLEMENTATION=rmw_cyclonedds_cpp',
     f'NUM_AGENTS={NUM_AGENTS}'
 ]
 sim_depends = {'novnc': {'condition': 'service_started'}}
-
-if USE_ZENOH:
-    sim_env.append('ZENOH_ROUTER_CHECK_ATTEMPTS=-1')
-    sim_depends['zenoh-router'] = {'condition': 'service_healthy'}
 
 # Scale sim resources based on number of agents
 # Base: 2 CPU + 0.3 per agent, 2GB + 150MB per agent
@@ -122,6 +94,6 @@ for i in range(1, NUM_AGENTS + 1):
 config = {'services': services, 'networks': {'x11': {}}}
 
 # Header comment
-print(f"# Auto-generated for {NUM_AGENTS} racecars using {RMW}")
-print(f"# Regenerate: NUM_AGENTS={NUM_AGENTS} RMW_IMPLEMENTATION={RMW} python3 scripts/generate-compose.py > docker-compose.yml")
+print(f"# Auto-generated for {NUM_AGENTS} racecars")
+print(f"# Regenerate: NUM_AGENTS={NUM_AGENTS} python3 scripts/generate-compose.py > docker-compose.yml")
 print(yaml.dump(config, default_flow_style=False, sort_keys=False))

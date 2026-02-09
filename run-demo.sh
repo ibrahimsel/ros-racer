@@ -10,9 +10,9 @@
 #   2. Eclipse Symphony orchestration (cloud-native)
 #
 # Usage:
-#   ./run-demo.sh                                    # Default: 3 agents with CycloneDDS
-#   NUM_AGENTS=10 ./run-demo.sh                      # 10 agents with CycloneDDS
-#   NUM_AGENTS=20 RMW_IMPLEMENTATION=rmw_zenoh_cpp ./run-demo.sh  # 20 agents with Zenoh
+#   ./run-demo.sh                                    # Default: 3 agents
+#   NUM_AGENTS=10 ./run-demo.sh                      # 10 agents
+#   NUM_AGENTS=20 ./run-demo.sh                      # 20 agents
 # =============================================================================
 
 set -e
@@ -44,7 +44,6 @@ PORT_MQTT=11883
 
 # Fleet configuration (can be overridden via environment)
 NUM_AGENTS="${NUM_AGENTS:-3}"
-RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
 DEPLOY_STAGGER="${DEPLOY_STAGGER:-0.5}"
 DEPLOY_DISCOVERY_WAIT="${DEPLOY_DISCOVERY_WAIT:-3.0}"
 
@@ -511,10 +510,6 @@ phase_intro() {
     echo ""
     echo -e "${CYAN}Fleet Configuration:${NC}"
     echo -e "  ${CYAN}•${NC} Agents:     ${BOLD}${NUM_AGENTS}${NC} racecars"
-    echo -e "  ${CYAN}•${NC} Middleware: ${BOLD}${RMW_IMPLEMENTATION}${NC}"
-    if [ "$NUM_AGENTS" -gt 10 ] && [ "$RMW_IMPLEMENTATION" != "rmw_zenoh_cpp" ]; then
-        echo -e "  ${YELLOW}⚠${NC} Tip: For 10+ agents, consider using rmw_zenoh_cpp for better scaling"
-    fi
     echo ""
     echo "This interactive demo will walk you through:"
     echo ""
@@ -618,15 +613,11 @@ Each edge container represents an autonomous racecar with the Muto agent and com
 
     echo "Configuration:"
     echo -e "  ${CYAN}NUM_AGENTS:${NC}          $NUM_AGENTS"
-    echo -e "  ${CYAN}RMW_IMPLEMENTATION:${NC}  $RMW_IMPLEMENTATION"
     echo ""
     echo "Services to be started:"
     echo -e "  ${CYAN}•${NC} novnc           - VNC server for visualization (port $PORT_NOVNC)"
     echo -e "  ${CYAN}•${NC} sim             - F1TENTH Gym simulator with RViz"
     echo -e "  ${CYAN}•${NC} artifact-server - Nginx for stack downloads"
-    if [ "$RMW_IMPLEMENTATION" = "rmw_zenoh_cpp" ]; then
-        echo -e "  ${CYAN}•${NC} zenoh-router    - Zenoh discovery router"
-    fi
     for i in $(seq 1 "$NUM_AGENTS"); do
         if [ "$i" -eq 1 ]; then
             echo -e "  ${CYAN}•${NC} edge            - Muto edge container (racecar1)"
@@ -638,7 +629,7 @@ Each edge container represents an autonomous racecar with the Muto agent and com
 
     print_info "Generating docker-compose.yml for ${NUM_AGENTS} agents..."
     cd "$SCRIPT_DIR"
-    NUM_AGENTS="$NUM_AGENTS" RMW_IMPLEMENTATION="$RMW_IMPLEMENTATION" python3 scripts/generate-compose.py > docker-compose.yml
+    NUM_AGENTS="$NUM_AGENTS" python3 scripts/generate-compose.py > docker-compose.yml
     print_success "docker-compose.yml generated"
 
     print_action "Running: $CONTAINER_RUNTIME compose up -d --build"
@@ -1038,7 +1029,6 @@ phase_summary() {
     echo -e "  ${GREEN}PART 1: Infrastructure${NC}"
     echo "     - Eclipse Symphony for cloud orchestration"
     echo "     - F1TENTH simulation with ${NUM_AGENTS} Muto edge containers"
-    echo "     - RMW: ${RMW_IMPLEMENTATION}"
     echo ""
     echo -e "  ${GREEN}PART 2: Direct Deployment (Muto Native)${NC}"
     echo "     - Push algorithms directly via ROS topics"
