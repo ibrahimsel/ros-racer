@@ -359,13 +359,12 @@ The system supports scaling from 3 up to 20 racecars with configurable ROS middl
 | Variable | Default | Options | Description |
 |----------|---------|---------|-------------|
 | `NUM_AGENTS` | 3 | 1-20 | Number of racecars to spawn |
-| `RMW_IMPLEMENTATION` | `rmw_cyclonedds_cpp` | `rmw_cyclonedds_cpp`, `rmw_zenoh_cpp` | ROS middleware |
 | `DEPLOY_STAGGER` | 0.5 | 0.0-2.0 | Delay between vehicle deployments (seconds) |
 
 #### Basic Usage
 
 ```bash
-# Default: 3 cars with CycloneDDS
+# Default: 3 cars
 python3 scripts/generate-compose.py > docker-compose.yml
 docker compose up --build
 
@@ -373,8 +372,8 @@ docker compose up --build
 NUM_AGENTS=10 python3 scripts/generate-compose.py > docker-compose.yml
 docker compose up --build
 
-# Scale to 20 cars with Zenoh (recommended for 10+ agents)
-NUM_AGENTS=20 RMW_IMPLEMENTATION=rmw_zenoh_cpp python3 scripts/generate-compose.py > docker-compose.yml
+# Scale to 20 cars
+NUM_AGENTS=20 python3 scripts/generate-compose.py > docker-compose.yml
 docker compose up --build
 ```
 
@@ -390,21 +389,13 @@ NUM_AGENTS=20 python3 scripts/generate-gap-follower-stacks.py
 NUM_AGENTS=20 python3 demo/scripts/deploy-stack-fleet.py
 ```
 
-#### RMW Selection Guide
-
-| Agents | Recommended RMW | Reason |
-|--------|-----------------|--------|
-| 1-10 | CycloneDDS (default) | Simpler setup, peer-to-peer DDS |
-| 10-20 | Zenoh | Router-based discovery, O(N) scaling |
-
 #### Resource Requirements (20 agents)
 
 | Component | CPU | Memory |
 |-----------|-----|--------|
 | sim | 8.0 | 5GB |
-| zenoh-router | 1.0 | 1GB |
 | edge (×20) | 0.5 each | 512MB each |
-| **Total** | ~19 cores | ~16GB |
+| **Total** | ~18 cores | ~15GB |
 
 Note: Sim resources scale automatically (2 + 0.3 per agent CPUs, 2GB + 150MB per agent).
 
