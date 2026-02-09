@@ -46,6 +46,7 @@ RUN apt-get update --fix-missing && \
                        python3-pip \
                        libeigen3-dev \
                        tmux \
+                       x11-utils \
                        wmctrl \
                        ros-humble-rviz2 \
                        ros-humble-rosbridge-server \
@@ -69,6 +70,9 @@ RUN source /opt/ros/humble/setup.bash && \
     apt-get update --fix-missing && \
     rosdep install -i --from-path src --rosdistro humble -y && \
     colcon build
+
+# Use CycloneDDS
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 WORKDIR '/sim_ws'
 CMD /bin/bash -c "/sim_ws/src/launch_sim.sh"

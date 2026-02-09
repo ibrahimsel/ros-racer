@@ -42,6 +42,9 @@ RUN mkdir -p /edge/src && \
     cd src/agent/symphony-sdk-python && pip3 install -e . && \
     rm -rf /var/lib/apt/lists/*
 
+# Use CycloneDDS
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

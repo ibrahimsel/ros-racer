@@ -9,7 +9,10 @@
 #   1. Direct ROS topic deployment (Muto native)
 #   2. Eclipse Symphony orchestration (cloud-native)
 #
-# Usage: ./run-demo.sh
+# Usage:
+#   ./run-demo.sh                                    # Default: 3 agents
+#   NUM_AGENTS=10 ./run-demo.sh                      # 10 agents
+#   NUM_AGENTS=20 ./run-demo.sh                      # 20 agents
 # =============================================================================
 
 set -e
@@ -38,6 +41,11 @@ PORT_NOVNC=18080
 PORT_SYMPHONY_API=18082
 PORT_SYMPHONY_PORTAL=13000
 PORT_MQTT=11883
+
+# Fleet configuration (can be overridden via environment)
+NUM_AGENTS="${NUM_AGENTS:-3}"
+DEPLOY_STAGGER="${DEPLOY_STAGGER:-0.5}"
+DEPLOY_DISCOVERY_WAIT="${DEPLOY_DISCOVERY_WAIT:-3.0}"
 
 # Symphony API URL
 SYMPHONY_API_URL="http://localhost:${PORT_SYMPHONY_API}/v1alpha2/"
@@ -294,12 +302,17 @@ show_muto_state() {
 show_all_muto_states() {
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}  Muto State Across Fleet${NC}"
+    echo -e "${CYAN}  Muto State Across Fleet (${NUM_AGENTS} vehicles)${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════════════════════${NC}"
 
-    for container in ros-racer-edge-1 ros-racer-edge2-1 ros-racer-edge3-1; do
-        local vehicle=$(echo "$container" | sed 's/ros-racer-//' | sed 's/-1//' | sed 's/edge/racecar1/' | sed 's/edge2/racecar2/' | sed 's/edge3/racecar3/')
-        show_muto_state "$container" "$vehicle"
+    for i in $(seq 1 "$NUM_AGENTS"); do
+        local container
+        if [ "$i" -eq 1 ]; then
+            container="ros-racer-edge-1"
+        else
+            container="ros-racer-edge${i}-1"
+        fi
+        show_muto_state "$container" "racecar${i}"
     done
 }
 
@@ -314,7 +327,8 @@ deploy_stack() {
     local stack_filename=$(basename "$stack_json")
 
     # Build the command - use the mounted /edge/demo directory
-    local cmd="source /opt/ros/humble/setup.bash && source /edge/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
+    # Pass NUM_AGENTS and DEPLOY_DISCOVERY_WAIT so deploy-stack.py knows fleet size
+    local cmd="export NUM_AGENTS=${NUM_AGENTS} DEPLOY_DISCOVERY_WAIT=${DEPLOY_DISCOVERY_WAIT} && source /opt/ros/humble/setup.bash && source /edge/install/setup.bash && cd /edge && python3 demo/scripts/deploy-stack.py demo/stacks/${stack_filename}"
 
     if [ -n "$vehicle" ]; then
         cmd="$cmd --vehicle $vehicle"
@@ -494,11 +508,14 @@ phase_intro() {
 
     echo -e "${WHITE}Welcome to the Eclipse Muto Over-The-Air (OTA) Update Demonstration!${NC}"
     echo ""
+    echo -e "${CYAN}Fleet Configuration:${NC}"
+    echo -e "  ${CYAN}•${NC} Agents:     ${BOLD}${NUM_AGENTS}${NC} racecars"
+    echo ""
     echo "This interactive demo will walk you through:"
     echo ""
     echo -e "  ${CYAN}PART 1: Infrastructure Setup${NC}"
     echo -e "  ${GREEN}1.${NC} Starting Eclipse Symphony (cloud orchestration)"
-    echo -e "  ${GREEN}2.${NC} Starting F1TENTH simulation with Muto edge containers"
+    echo -e "  ${GREEN}2.${NC} Starting F1TENTH simulation with ${NUM_AGENTS} Muto edge containers"
     echo ""
     echo -e "  ${CYAN}PART 2: Direct Deployment (Muto Native)${NC}"
     echo -e "  ${GREEN}3.${NC} Deploy conservative algorithm via ROS topic"
@@ -511,7 +528,7 @@ phase_intro() {
     echo -e "  ${GREEN}8.${NC} Deploy via Symphony instance creation"
     echo ""
     echo -e "  ${CYAN}PART 4: Fleet Management${NC}"
-    echo -e "  ${GREEN}9.${NC} Deploy different algorithms to each vehicle"
+    echo -e "  ${GREEN}9.${NC} Deploy different algorithms to ${NUM_AGENTS} vehicles"
     echo ""
     echo -e "${DIM}Each step will explain what's happening and wait for your confirmation.${NC}"
 
@@ -591,16 +608,29 @@ deployments across edge devices. It communicates with Muto agents via MQTT."
 phase_start_simulation() {
     print_step "Starting F1TENTH Simulation Infrastructure"
 
-    print_narration "Now we'll start the F1TENTH racing simulation with 3 Muto edge containers.
+    print_narration "Now we'll start the F1TENTH racing simulation with ${NUM_AGENTS} Muto edge containers.
 Each edge container represents an autonomous racecar with the Muto agent and composer."
 
-    echo "Services to be started:"
-    echo -e "  ${CYAN}•${NC} novnc      - VNC server for visualization (port $PORT_NOVNC)"
-    echo -e "  ${CYAN}•${NC} sim        - F1TENTH Gym simulator with RViz"
-    echo -e "  ${CYAN}•${NC} edge       - Muto edge container (racecar1)"
-    echo -e "  ${CYAN}•${NC} edge2      - Muto edge container (racecar2)"
-    echo -e "  ${CYAN}•${NC} edge3      - Muto edge container (racecar3)"
+    echo "Configuration:"
+    echo -e "  ${CYAN}NUM_AGENTS:${NC}          $NUM_AGENTS"
     echo ""
+    echo "Services to be started:"
+    echo -e "  ${CYAN}•${NC} novnc           - VNC server for visualization (port $PORT_NOVNC)"
+    echo -e "  ${CYAN}•${NC} sim             - F1TENTH Gym simulator with RViz"
+    echo -e "  ${CYAN}•${NC} artifact-server - Nginx for stack downloads"
+    for i in $(seq 1 "$NUM_AGENTS"); do
+        if [ "$i" -eq 1 ]; then
+            echo -e "  ${CYAN}•${NC} edge            - Muto edge container (racecar1)"
+        else
+            echo -e "  ${CYAN}•${NC} edge${i}           - Muto edge container (racecar${i})"
+        fi
+    done
+    echo ""
+
+    print_info "Generating docker-compose.yml for ${NUM_AGENTS} agents..."
+    cd "$SCRIPT_DIR"
+    NUM_AGENTS="$NUM_AGENTS" python3 scripts/generate-compose.py > docker-compose.yml
+    print_success "docker-compose.yml generated"
 
     print_action "Running: $CONTAINER_RUNTIME compose up -d --build"
 
@@ -937,39 +967,42 @@ phase_fleet_heterogeneity() {
     print_step "Fleet Heterogeneity - Different Algorithms Per Vehicle"
 
     print_narration "In real fleet deployments, you often need different configurations
-for different vehicles. For example:
-- Lead car: conservative (avoid obstacles)
-- Middle car: aggressive (maintain pace)
-- Rear car: balanced (adapt to conditions)
+for different vehicles. This demonstrates targeting individual vehicles with
+cycling driving styles: aggressive -> balanced -> conservative."
 
-This demonstrates targeting individual vehicles."
+    # Define styles array (cycles through these)
+    local styles=("aggressive" "balanced" "conservative")
+    local style_descs=("fast, tight" "medium" "slow, safe")
 
-    echo "Deployment plan:"
-    echo -e "  ${CYAN}racecar1:${NC} conservative (slow, safe)"
-    echo -e "  ${CYAN}racecar2:${NC} aggressive (fast, tight)"
-    echo -e "  ${CYAN}racecar3:${NC} balanced (medium)"
+    echo "Deployment plan (${NUM_AGENTS} vehicles):"
+    for i in $(seq 1 "$NUM_AGENTS"); do
+        local style_idx=$(( (i - 1) % 3 ))
+        local style="${styles[$style_idx]}"
+        local desc="${style_descs[$style_idx]}"
+        echo -e "  ${CYAN}racecar${i}:${NC} ${style} (${desc})"
+    done
     echo ""
 
     print_info "Using direct ROS topic deployment to target individual vehicles."
+    print_info "Stagger delay: ${DEPLOY_STAGGER}s between deployments"
     echo ""
 
-    print_action "Deploying conservative to racecar1..."
     wait_for_enter
 
-    deploy_stack "$STACKS_DIR/gap_follower_conservative.json" racecar1
-    print_success "racecar1 -> conservative"
+    for i in $(seq 1 "$NUM_AGENTS"); do
+        local style_idx=$(( (i - 1) % 3 ))
+        local style="${styles[$style_idx]}"
+        local stack_file="$STACKS_DIR/gap_follower_${style}.json"
 
-    sleep 2
+        print_action "Deploying ${style} to racecar${i}..."
+        deploy_stack "$stack_file" "racecar${i}"
+        print_success "racecar${i} -> ${style}"
 
-    print_action "Deploying aggressive to racecar2..."
-    deploy_stack "$STACKS_DIR/gap_follower_aggressive.json" racecar2
-    print_success "racecar2 -> aggressive"
-
-    sleep 2
-
-    print_action "Deploying balanced to racecar3..."
-    deploy_stack "$STACKS_DIR/gap_follower_balanced.json" racecar3
-    print_success "racecar3 -> balanced"
+        # Stagger between deployments (except after last)
+        if [ "$i" -lt "$NUM_AGENTS" ] && [ "$DEPLOY_STAGGER" != "0" ] && [ "$DEPLOY_STAGGER" != "0.0" ]; then
+            sleep "$DEPLOY_STAGGER"
+        fi
+    done
 
     echo ""
     print_success "Fleet configured with heterogeneous algorithms!"
@@ -991,11 +1024,11 @@ This demonstrates targeting individual vehicles."
 phase_summary() {
     print_header "Demo Complete!"
 
-    echo -e "${WHITE}Summary of what we demonstrated:${NC}"
+    echo -e "${WHITE}Summary of what we demonstrated with ${NUM_AGENTS} racecars:${NC}"
     echo ""
     echo -e "  ${GREEN}PART 1: Infrastructure${NC}"
     echo "     - Eclipse Symphony for cloud orchestration"
-    echo "     - F1TENTH simulation with Muto edge containers"
+    echo "     - F1TENTH simulation with ${NUM_AGENTS} Muto edge containers"
     echo ""
     echo -e "  ${GREEN}PART 2: Direct Deployment (Muto Native)${NC}"
     echo "     - Push algorithms directly via ROS topics"
@@ -1009,7 +1042,7 @@ phase_summary() {
     echo ""
     echo -e "  ${GREEN}PART 4: Fleet Management${NC}"
     echo "     - Individual vehicle targeting"
-    echo "     - Heterogeneous fleet configuration"
+    echo "     - Heterogeneous fleet configuration (${NUM_AGENTS} vehicles)"
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════════════════════${NC}"
     echo ""

@@ -16,14 +16,16 @@ import rclpy
 from rclpy.node import Node
 from muto_msgs.msg import MutoAction
 import json
+import os
 import sys
 import argparse
 import time
 
 
 class StackDeployer(Node):
-    # Known vehicles in the fleet
-    FLEET_VEHICLES = ['racecar1', 'racecar2', 'racecar3']
+    # Dynamic fleet based on NUM_AGENTS environment variable
+    _num_agents = int(os.environ.get('NUM_AGENTS', 3))
+    FLEET_VEHICLES = [f'racecar{i}' for i in range(1, _num_agents + 1)]
 
     def __init__(self, stack_file, vehicle=None, method='start'):
         super().__init__('stack_deployer')
@@ -55,8 +57,11 @@ class StackDeployer(Node):
         self.get_logger().info(f"  Topics: {self.topics}")
         self.get_logger().info(f"  Method: {method}")
 
-        # Create timer to publish (allow time for discovery)
-        self.create_timer(1.0, self.publish_stack)
+        # Create timer to publish (allow time for DDS discovery)
+        # With many agents on CycloneDDS, discovery can take 3-5 seconds
+        discovery_wait = float(os.environ.get('DEPLOY_DISCOVERY_WAIT', 3.0))
+        self.get_logger().info(f"  Discovery wait: {discovery_wait}s")
+        self.create_timer(discovery_wait, self.publish_stack)
 
     def publish_stack(self):
         if self.published:
@@ -74,8 +79,8 @@ class StackDeployer(Node):
         self.published = True
         self.get_logger().info(f"Payload preview: {msg.payload[:100]}...")
 
-        # Schedule shutdown
-        self.create_timer(0.5, lambda: self.shutdown())
+        # Wait for reliable delivery before shutdown
+        self.create_timer(1.0, lambda: self.shutdown())
 
     def shutdown(self):
         raise SystemExit(0)

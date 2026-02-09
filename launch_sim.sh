@@ -17,21 +17,29 @@
 source /opt/ros/humble/setup.bash
 source /sim_ws/install/setup.bash
 
-# Function to maximize RViz window once it's available
-maximize_rviz() {
-    sleep 5  # Wait for RViz to start
-    for i in {1..10}; do
+# Wait for X server to be available
+echo "Waiting for X server at $DISPLAY..."
+for i in {1..30}; do
+    if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
+        echo "X server ready"
+        break
+    fi
+    echo "Waiting for X server... ($i/30)"
+    sleep 1
+done
+
+# Background task to maximize rviz when it opens
+(
+    for i in {1..30}; do
+        sleep 1
         if wmctrl -l | grep -q "RViz"; then
             wmctrl -r "RViz" -b add,maximized_vert,maximized_horz
             echo "RViz window maximized"
             break
         fi
-        sleep 2
     done
-}
+) &
 
-# Start the maximize function in background
-maximize_rviz &
-
-# Launch ROS simulation
-ros2 launch f1tenth_gym_ros gym_bridge_launch.py
+# Launch ROS simulation with configurable number of agents
+NUM_AGENTS="${NUM_AGENTS:-3}"
+ros2 launch f1tenth_gym_ros gym_bridge_launch.py num_agents:=$NUM_AGENTS
