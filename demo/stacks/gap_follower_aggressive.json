@@ -9,7 +9,7 @@
     "url": "http://artifact-server:9090/gap_follower_aggressive.tar.gz",
     "properties": {
       "algorithm": "sha256",
-      "checksum": "421e96c6a6def892b2a9a38646856ab3bf4703cc5b0af6db3230b2c05d15d144",
+      "checksum": "76ba9b80fcdee6e0f5fb2bcc74af2985e7874bfeac4c8b5d4d845ff966be1c50",
       "launch_file": "run.sh",
       "flatten": true
     }
