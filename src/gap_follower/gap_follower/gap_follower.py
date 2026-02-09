@@ -21,6 +21,7 @@ import math
 import os
 from typing import Optional, Tuple
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker, MarkerArray
@@ -271,9 +272,9 @@ class GapFollower(Node):
         )
 
         self.drive_pub = self.create_publisher(
-            AckermannDriveStamped, f'/{self.hostname}/drive', 1
+            AckermannDriveStamped, f'/{self.hostname}/drive', 10
         )
-        self.create_subscription(LaserScan, f'/{self.hostname}/scan', self.cb, 1)
+        self.create_subscription(LaserScan, f'/{self.hostname}/scan', self.cb, qos_profile_sensor_data)
         
         # Visualization publishers
         self.viz_pub = self.create_publisher(
