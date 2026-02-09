@@ -45,43 +45,14 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, Int32, String
 from nav_msgs.msg import Odometry, Path
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Transform, PoseStamped, PointStamped
+from geometry_msgs.msg import Transform, PoseStamped
 from geometry_msgs.msg import TransformStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from ackermann_msgs.msg import AckermannDriveStamped
-from visualization_msgs.msg import Marker, MarkerArray   
-from tf2_ros import TransformBroadcaster
+from visualization_msgs.msg import Marker, MarkerArray
+from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from ament_index_python.packages import get_package_share_directory
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
-
-
-class LapTimeTracker:
-    def __init__(self):
-        self.start_time = None
-        self.elapsed_time = 0
-        self.running = False
-
-    def start(self):
-        if not self.running:
-            self.start_time = time.time() - self.elapsed_time
-            self.running = True
-
-    def get_elapsed_time(self):
-        if self.running:
-            return time.time() - self.start_time
-        return self.elapsed_time
-
-    def reset(self, restart=True):
-        self.start_time = None  # Reset to None
-        self.elapsed_time = 0
-        self.running = False
-        if restart:
-            self.start()
-
-    def pause(self):
-        if self.running:
-            self.elapsed_time = time.time() - self.start_time
-            self.running = False
 
 
 class GymBridge(Node):
@@ -113,21 +84,11 @@ class GymBridge(Node):
             Int32, 'racecar_to_estimate_pose', self.choose_active_racecar_callback, 10)
         self.spawn_all_subscriber = self.create_subscription(
             Bool, 'spawn_all_mode', self.spawn_all_mode_callback, 10)
-        self.spawn_obstacle_subscriber = self.create_subscription(
-            Bool, 'spawn_obstacle_mode', self.spawn_obstacle_mode_callback, 10)
-        self.set_lap_point_subscriber = self.create_subscription(
-            Bool, 'set_lap_point_mode', self.set_lap_point_mode_callback, 10)
-        
-        # Mode feedback publisher (tells plugin when action is complete)
-        self.mode_feedback_pub = self.create_publisher(String, 'mode_feedback', 10)
 
         # Additional attributes to manage the state of the simulation
         self.simulation_running = False
         self.simulation_paused = False
         self.spawn_all_mode = False  # When true, next pose estimate spawns all racecars
-        self.spawn_obstacle_mode = False  # When true, next pose estimate spawns obstacle
-        self.set_lap_point_mode = False  # When true, next pose estimate sets lap point
-        self.agent_lap_completed = [False] * self.num_agents
         self.agent_disqualified = [False] * self.num_agents
 
         # env backend
@@ -166,12 +127,7 @@ class GymBridge(Node):
         self.angle_min = -scan_fov / 2.0
         self.angle_max = scan_fov / 2.0
         self.angle_inc = scan_fov / scan_beams
-
-        # Precompute ray directions in local (car) frame for vectorized obstacle scanning
         self._num_beams = scan_beams
-        self._ray_angles_local = np.linspace(self.angle_min, self.angle_max, scan_beams)
-        self._ray_cos_local = np.cos(self._ray_angles_local)  # shape: (num_beams,)
-        self._ray_sin_local = np.sin(self._ray_angles_local)  # shape: (num_beams,)
 
         self.pose_reset_arr = np.zeros((self.num_agents, 3))
         # Initial spawn position for racecar1 (others spawn behind it)
@@ -200,29 +156,25 @@ class GymBridge(Node):
         else:
             sensor_rate = 20  # Hz
         sensor_period = 1.0 / sensor_rate
-        
+
         # Timer rates optimized for smooth simulation:
         # - Physics: 100 Hz (10ms) - matches typical simulator timestep
         # - Sensor publish: adaptive based on agent count
-        # - Lap times: 10 Hz (100ms) - UI update rate
         self.drive_timer = self.create_timer(0.01, self.drive_timer_callback)  # 100 Hz physics
         self.timer = self.create_timer(sensor_period, self.timer_callback)  # Adaptive sensor publish
         self.visualization_timer = self.create_timer(0.2, self._visualization_timer_callback)  # 5 Hz markers
         self.stats_timer = self.create_timer(0.5, self._stats_timer_callback)  # 2 Hz JSON stats
-        self.lap_time_timer = self.create_timer(0.1, self.publish_lap_times)  # 10 Hz lap times
         self.get_logger().info(f"Sensor publish rate: {sensor_rate} Hz for {self.num_agents} agents")
-        self.lap_time_publisher = self.create_publisher(
-            String, 'lap_times', 10
-        )
 
         # transform broadcaster
         self.br = TransformBroadcaster(self)
 
+        # Static transform broadcaster for laser frames (published once)
+        self.static_br = StaticTransformBroadcaster(self)
+        self._publish_static_laser_transforms()
+
         self.active_racecar_to_reset_pose = 0
 
-        self.lap_time_trackers = [LapTimeTracker()
-                                  for _ in range(self.num_agents)]
-        self.best_lap_times = [0.0] * self.num_agents
         # topic names have to be unique for each car
         self.scan_topics = [
             f"{self.racecar_namespace}{i + 1}{racecar_scan_topic}" for i in range(self.num_agents)]
@@ -241,32 +193,40 @@ class GymBridge(Node):
             (self.num_agents, 2)
         )  # 2 for steering angle and speed
 
-        # Define QoS profile for some publishers
-        qos_profile = QoSProfile(
-            depth=10,
+        # QoS profiles optimized to avoid backlog/latency under load
+        # Best-effort + depth 1 for scan/odom (sensor data - latest is most important)
+        sensor_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE
+        )
+
+        # Depth 1 for drive (control commands - only latest matters)
+        drive_qos = QoSProfile(
+            depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.VOLATILE
         )
 
         for i in range(self.num_agents):
             racecar_scan_pub = self.create_publisher(
-                LaserScan, self.scan_topics[i], qos_profile=qos_profile
+                LaserScan, self.scan_topics[i], qos_profile=sensor_qos
             )
             racecar_odom_pub = self.create_publisher(
-                Odometry, self.odom_topics[i], qos_profile=qos_profile
+                Odometry, self.odom_topics[i], qos_profile=sensor_qos
             )
             racecar_drive_sub = self.create_subscription(
-                AckermannDriveStamped, self.drive_topics[i], self.drive_callback, qos_profile=qos_profile
+                AckermannDriveStamped, self.drive_topics[i], self.drive_callback, qos_profile=drive_qos
             )
             self.scan_publishers.append(racecar_scan_pub)
             self.odom_publishers.append(racecar_odom_pub)
             self.drive_subscribers.append(racecar_drive_sub)
 
         self.marker_pub = self.create_publisher(MarkerArray, 'racecar_labels', 10)
-        
+
         # Speed markers publisher (displays velocity above each car)
         self.speed_marker_pub = self.create_publisher(MarkerArray, 'speed_markers', 10)
-        
+
         # Trajectory path publishers (one per agent)
         self.path_publishers = []
         self.trajectory_history = []
@@ -274,19 +234,13 @@ class GymBridge(Node):
             path_pub = self.create_publisher(
                 Path, f'{self.racecar_namespace}{i+1}/trajectory', 10)
             self.path_publishers.append(path_pub)
-            self.trajectory_history.append(deque(maxlen=500))  # Last 500 positions
-        
+            self.trajectory_history.append(deque(maxlen=100))  # Reduced from 500 to 100
+
         # Trajectory publish timer (5 Hz - less frequent than main loop)
         self.trajectory_timer = self.create_timer(0.2, self._publish_trajectories)
-        
-        # Additional visualization publishers
-        self.velocity_arrow_pub = self.create_publisher(MarkerArray, 'velocity_arrows', 10)
-        self.safety_zone_pub = self.create_publisher(MarkerArray, 'safety_zones', 10)
-        self.race_markers_pub = self.create_publisher(MarkerArray, 'race_markers', 10)
+
+        # Race stats publisher
         self.race_stats_pub = self.create_publisher(String, 'race_stats_json', 10)
-        
-        # Publish static race markers (start/finish line) once
-        self._start_finish_published = False
 
         # Pre-allocate message objects for performance (avoid allocation in callbacks)
         self._scan_msgs = [LaserScan() for _ in range(self.num_agents)]
@@ -307,327 +261,81 @@ class GymBridge(Node):
         # Per-tick cached values to avoid redundant computation across publishers
         self._cached_quats = np.zeros((self.num_agents, 4))  # [w, x, y, z] per agent
         self._cached_speeds = np.zeros(self.num_agents)
-        self._cached_min_scans = np.zeros(self.num_agents)
 
         self.racecar_drive_published = False
         self.last_log_time = time.time()
         self.pose_reset_sub = self.create_subscription(
             PoseWithCovarianceStamped, "/initialpose", self.pose_reset_callback, 10
         )
-        
-        # Obstacle spawning via clicked_point (from RViz Publish Point tool)
-        self.clicked_point_sub = self.create_subscription(
-            PointStamped, "/clicked_point", self.clicked_point_callback, 10
-        )
-        self.clear_obstacles_sub = self.create_subscription(
-            Bool, "clear_obstacles", self.clear_obstacles_callback, 10
-        )
-        self.obstacles = []  # List of (x, y, radius) tuples
-        self.obstacle_marker_pub = self.create_publisher(MarkerArray, 'obstacles', 10)
-        
-        # Lap point marker publisher
-        self.lap_point_pub = self.create_publisher(MarkerArray, 'lap_point', 10)
-        self.lap_point_position = (-39.787510, -12.662288)  # Default lap point
-        self.lap_point_orientation = -2.594919  # ~-149° from quaternion (z=-0.963, w=0.270)
-        self._lap_point_published = False
 
         # Track last drive message time for each racecar to detect stale commands
         self.last_drive_time = [time.time()] * self.num_agents
         self.drive_timeout = 0.1  # 100ms timeout - stop car if no command received
 
+        # Pending pose updates for incremental world changes (instead of full reset)
+        self._pending_pose_updates = {}  # {agent_idx: (x, y, theta)}
+
         # Auto-start simulation if enabled (removes need for Start button click)
         if self.get_parameter("auto_start").value:
             self.simulation_running = True
-            for tracker in self.lap_time_trackers:
-                tracker.start()
             self.get_logger().info("Simulation auto-started")
+
+    def _publish_static_laser_transforms(self):
+        """Publish static laser transforms once at startup."""
+        transforms = []
+        for i in range(self.num_agents):
+            racecar_namespace = self.racecar_namespace + str(i + 1)
+            racecar_scan_ts = TransformStamped()
+            racecar_scan_ts.transform.translation.x = self.scan_distance_to_base_link
+            racecar_scan_ts.transform.rotation.w = 1.0
+            racecar_scan_ts.header.stamp = self.get_clock().now().to_msg()
+            racecar_scan_ts.header.frame_id = racecar_namespace + "/base_link"
+            racecar_scan_ts.child_frame_id = racecar_namespace + "/laser"
+            transforms.append(racecar_scan_ts)
+        self.static_br.sendTransform(transforms)
 
     def handle_collision(self):
         """Checks for collision and handles if there is any.
-        
-        Optimized: Uses vectorized numpy min instead of O(n × 1080) loop.
-        Also checks collision with spawned obstacles.
+
+        Optimized: Uses vectorized numpy min instead of O(n * 1080) loop.
         """
         collision_threshold = 0.21
-        car_radius = 0.2  # Approximate racecar collision radius
         min_scans = np.min(self.obs["scans"], axis=1)  # Vectorized - one op for all agents
-        
+
         for i in range(self.num_agents):
             if self.agent_disqualified[i]:
                 continue
-                
+
             # Check wall collision (scan-based)
             if min_scans[i] <= collision_threshold:
                 self.agent_disqualified[i] = True
-                self.lap_time_trackers[i].reset(restart=False)
                 self.get_logger().info(f"Racecar {i + 1} is disqualified (wall collision)")
-                continue
-            
-            # Check obstacle collision
-            car_x = self.obs["poses_x"][i]
-            car_y = self.obs["poses_y"][i]
-            for obs_x, obs_y, obs_radius in self.obstacles:
-                dist = np.sqrt((car_x - obs_x)**2 + (car_y - obs_y)**2)
-                if dist < (obs_radius + car_radius):
-                    self.agent_disqualified[i] = True
-                    self.lap_time_trackers[i].reset(restart=False)
-                    self.get_logger().info(f"Racecar {i + 1} is disqualified (obstacle collision)")
-                    break
 
     def choose_active_racecar_callback(self, racecar_index):
         """Handle racecar selection from plugin numbered buttons."""
         self.active_racecar_to_reset_pose = racecar_index.data
         # Disable all special modes when selecting a racecar
         self.spawn_all_mode = False
-        self.spawn_obstacle_mode = False
-        self.set_lap_point_mode = False
 
     def spawn_all_mode_callback(self, msg):
         """Toggle spawn_all mode from plugin."""
         self.spawn_all_mode = msg.data
         if msg.data:
-            self.spawn_obstacle_mode = False
-            self.set_lap_point_mode = False
             self.get_logger().info("Spawn All mode activated - use 2D Pose Estimate")
-
-    def spawn_obstacle_mode_callback(self, msg):
-        """Toggle spawn_obstacle mode from plugin."""
-        self.spawn_obstacle_mode = msg.data
-        if msg.data:
-            self.spawn_all_mode = False
-            self.set_lap_point_mode = False
-            self.get_logger().info("Spawn Obstacle mode activated - use 2D Pose Estimate")
-
-    def set_lap_point_mode_callback(self, msg):
-        """Toggle set_lap_point mode from plugin."""
-        self.set_lap_point_mode = msg.data
-        if msg.data:
-            self.spawn_all_mode = False
-            self.spawn_obstacle_mode = False
-            self.get_logger().info("Set Lap Point mode activated - use 2D Pose Estimate")
-
-    def clicked_point_callback(self, msg):
-        """Add an obstacle at the clicked point location."""
-        x = msg.point.x
-        y = msg.point.y
-        radius = 0.15  # Default obstacle radius
-        
-        self.obstacles.append((x, y, radius))
-        self.get_logger().info(f"Added obstacle at ({x:.2f}, {y:.2f})")
-        self._publish_obstacle_markers()
-
-    def clear_obstacles_callback(self, msg):
-        """Clear all obstacles when triggered."""
-        if msg.data:
-            self.obstacles.clear()
-            self._publish_obstacle_markers()
-            self.get_logger().info("Cleared all obstacles")
-
-    def _publish_obstacle_markers(self):
-        """Publish markers for all obstacles."""
-        arr = MarkerArray()
-        
-        # First, delete all existing markers
-        delete_marker = Marker()
-        delete_marker.action = Marker.DELETEALL
-        arr.markers.append(delete_marker)
-        
-        # Add markers for each obstacle
-        ts = self.get_clock().now().to_msg()
-        for i, (x, y, radius) in enumerate(self.obstacles):
-            m = Marker()
-            m.header.stamp = ts
-            m.header.frame_id = "map"
-            m.ns = "obstacles"
-            m.id = i
-            m.type = Marker.CYLINDER
-            m.action = Marker.ADD
-            m.pose.position.x = x
-            m.pose.position.y = y
-            m.pose.position.z = 0.15  # Half height
-            m.scale.x = radius * 2
-            m.scale.y = radius * 2
-            m.scale.z = 0.3  # Height
-            m.color.r = 0.8
-            m.color.g = 0.2
-            m.color.b = 0.2
-            m.color.a = 0.9
-            arr.markers.append(m)
-        
-        self.obstacle_marker_pub.publish(arr)
-
-    def _apply_obstacles_to_scan(self, racecar_idx):
-        """Apply obstacle intersections to laser scan using numpy vectorization.
-
-        Instead of O(beams * obstacles) Python loops, this uses broadcasting
-        to vectorize the ray-circle intersection test across all beams.
-        Only the outer loop over obstacles (typically 0-10) remains.
-        """
-        ranges = np.array(self.obs["scans"][racecar_idx], dtype=np.float64)
-
-        if not self.obstacles:
-            return ranges.tolist()
-
-        # Get car pose
-        car_x = self.obs["poses_x"][racecar_idx]
-        car_y = self.obs["poses_y"][racecar_idx]
-        car_theta = self.obs["poses_theta"][racecar_idx]
-
-        # Rotate precomputed local ray directions to world frame (vectorized)
-        cos_t = np.cos(car_theta)
-        sin_t = np.sin(car_theta)
-        ray_dx = cos_t * self._ray_cos_local - sin_t * self._ray_sin_local
-        ray_dy = sin_t * self._ray_cos_local + cos_t * self._ray_sin_local
-
-        # Loop over obstacles (typically 0-10), vectorize over beams (1080)
-        for obs_x, obs_y, obs_r in self.obstacles:
-            # Vector from car to obstacle center
-            to_x = obs_x - car_x
-            to_y = obs_y - car_y
-
-            # Project onto ray directions (dot product, vectorized over all beams)
-            proj = to_x * ray_dx + to_y * ray_dy  # shape: (num_beams,)
-
-            # Perpendicular distance from ray to obstacle center
-            perp = np.abs(to_x * ray_dy - to_y * ray_dx)  # shape: (num_beams,)
-
-            # Find rays that could hit this obstacle (in front and within radius)
-            hits = (proj > 0) & (perp < obs_r)
-
-            if np.any(hits):
-                # Compute intersection distance only for hitting rays
-                intersect = proj[hits] - np.sqrt(np.maximum(0, obs_r**2 - perp[hits]**2))
-
-                # Update ranges where intersection is closer and positive
-                valid = intersect > 0
-                ranges[hits] = np.where(valid, np.minimum(ranges[hits], intersect), ranges[hits])
-
-        return ranges.tolist()
-
-    def _publish_lap_point_marker(self, ts):
-        """Publish the lap/finish line marker - checkered pattern like real races."""
-        if self._lap_point_published:
-            return
-        
-        arr = MarkerArray()
-        
-        # Create a checkered finish line pattern
-        line_width = 4.0  # Total width of the line
-        checker_size = 0.25  # Size of each checker square
-        num_checkers = int(line_width / checker_size)
-        
-        # Get orientation - line is perpendicular to facing direction
-        theta = self.lap_point_orientation
-        perp_theta = theta + np.pi / 2  # Perpendicular direction
-        
-        # Quaternion for marker orientation (rotate around Z axis)
-        quat = euler.euler2quat(0.0, 0.0, theta, axes="sxyz")
-        
-        marker_id = 0
-        for i in range(num_checkers):
-            for j in range(2):  # 2 rows of checkers
-                m = Marker()
-                m.header.stamp = ts
-                m.header.frame_id = "map"
-                m.ns = "lap_point"
-                m.id = marker_id
-                marker_id += 1
-                m.type = Marker.CUBE
-                m.action = Marker.ADD
-                
-                # Calculate position: spread along perpendicular, offset along facing
-                perp_offset = (i - num_checkers/2) * checker_size
-                forward_offset = (j - 0.5) * checker_size
-                
-                m.pose.position.x = (self.lap_point_position[0] + 
-                                     perp_offset * np.cos(perp_theta) +
-                                     forward_offset * np.cos(theta))
-                m.pose.position.y = (self.lap_point_position[1] + 
-                                     perp_offset * np.sin(perp_theta) +
-                                     forward_offset * np.sin(theta))
-                m.pose.position.z = 0.01
-                
-                # Apply orientation
-                m.pose.orientation.x = quat[1]
-                m.pose.orientation.y = quat[2]
-                m.pose.orientation.z = quat[3]
-                m.pose.orientation.w = quat[0]
-                
-                m.scale.x = checker_size * 0.95
-                m.scale.y = checker_size * 0.95
-                m.scale.z = 0.02
-                
-                # Alternating black and white pattern
-                if (i + j) % 2 == 0:
-                    m.color.r = m.color.g = m.color.b = 1.0  # White
-                else:
-                    m.color.r = m.color.g = m.color.b = 0.1  # Black
-                m.color.a = 1.0
-                
-                arr.markers.append(m)
-        
-        # Finish line text
-        text = Marker()
-        text.header.stamp = ts
-        text.header.frame_id = "map"
-        text.ns = "lap_point"
-        text.id = marker_id
-        text.type = Marker.TEXT_VIEW_FACING
-        text.action = Marker.ADD
-        text.pose.position.x = self.lap_point_position[0]
-        text.pose.position.y = self.lap_point_position[1]
-        text.pose.position.z = 0.5
-        text.scale.z = 0.3
-        text.color.r = 1.0
-        text.color.g = 1.0
-        text.color.b = 1.0
-        text.color.a = 1.0
-        text.text = "FINISH"
-        arr.markers.append(text)
-        
-        self.lap_point_pub.publish(arr)
-        self._lap_point_published = True
-
-    def is_lap_completed(self, racecar_index):
-        threshold_distance = 2.0
-        current_x = self.obs["poses_x"][racecar_index]
-        current_y = self.obs["poses_y"][racecar_index]
-        # Calculate distance from the dynamic lap point position
-        lap_x, lap_y = self.lap_point_position
-        distance_from_lap_point = np.sqrt((current_x - lap_x)**2 + (current_y - lap_y)**2)
-
-        if distance_from_lap_point <= threshold_distance:
-            if not self.agent_lap_completed[racecar_index]:
-                self.agent_lap_completed[racecar_index] = True
-                completion_time = self.lap_time_trackers[racecar_index].get_elapsed_time()
-                if completion_time > 5.0:
-                    self.best_lap_times[racecar_index] = completion_time
-                return True
-            else:
-                return False
-        else:
-            self.agent_lap_completed[racecar_index] = False
-            return False
 
     def start_callback(self, msg):
         if msg.data:
             self.simulation_running = True
             self.simulation_paused = False
             self.get_logger().info('Simulation started')
-            for tracker in self.lap_time_trackers:
-                tracker.start()
 
     def pause_callback(self, msg):
         if msg.data:
             self.simulation_paused = not self.simulation_paused
             if self.simulation_paused:
-                for tracker in self.lap_time_trackers:
-                    tracker.pause()
-                self.get_logger().info('Tracker and Simulation paused')
+                self.get_logger().info('Simulation paused')
             else:
-                for tracker in self.lap_time_trackers:
-                    tracker.start()
-                self.get_logger().info('Tracker and Simulation resumed')
+                self.get_logger().info('Simulation resumed')
 
     def reset_callback(self, msg):
         """Reset all agents to their starting positions."""
@@ -638,11 +346,6 @@ class GymBridge(Node):
             self.obs, _, self.done, _ = self.env.reset(np.array(self.pose_reset_arr))
             # Clear disqualifications
             self.agent_disqualified = [False] * self.num_agents
-            # Reset lap trackers
-            for tracker in self.lap_time_trackers:
-                tracker.reset(restart=True)
-            # Reset best lap times
-            self.best_lap_times = [0.0] * self.num_agents
             self.get_logger().info('Race reset complete')
 
     def drive_callback(self, drive_msg):
@@ -686,6 +389,10 @@ class GymBridge(Node):
                         self.drive_msgs[i][1] = 0.0
                         self.drive_msgs[i][0] = 0.0
 
+            # Apply any pending incremental pose updates
+            if self._pending_pose_updates:
+                self._apply_pending_pose_updates()
+
             # ALWAYS step physics - this is critical for smooth simulation!
             # Don't wait for drive messages - use last known commands
             self.obs, _, self.done, _ = self.env.step(self.drive_msgs)
@@ -693,22 +400,31 @@ class GymBridge(Node):
             # Handle collision detection (once per step, not per agent)
             self.handle_collision()
 
-            # Check lap completion for each agent
-            for agent_idx in range(self.num_agents):
-                if self.is_lap_completed(agent_idx):
-                    # Read elapsed time BEFORE reset (was buggy: reset then read returned ~0)
-                    completion_time = self.lap_time_trackers[agent_idx].get_elapsed_time()
-                    if completion_time > 5.0:
-                        self.get_logger().info(
-                            f"Racecar {agent_idx + 1} completed a lap with time: {completion_time:.4f}")
-                    # Reset tracker AFTER capturing the time
-                    self.lap_time_trackers[agent_idx].reset(restart=True)
+    def _apply_pending_pose_updates(self):
+        """Apply queued incremental pose updates at physics tick boundary."""
+        if not self._pending_pose_updates:
+            return
+
+        # Get current poses
+        for i in range(self.num_agents):
+            if i in self._pending_pose_updates:
+                x, y, theta = self._pending_pose_updates[i]
+                self.pose_reset_arr[i][0] = x
+                self.pose_reset_arr[i][1] = y
+                self.pose_reset_arr[i][2] = theta
+            else:
+                self.pose_reset_arr[i][0] = self.obs["poses_x"][i]
+                self.pose_reset_arr[i][1] = self.obs["poses_y"][i]
+                self.pose_reset_arr[i][2] = self.obs["poses_theta"][i]
+
+        # Reset env with new poses
+        self.obs, _, self.done, _ = self.env.reset(np.array(self.pose_reset_arr))
+        self._pending_pose_updates.clear()
 
     def _update_tick_cache(self):
         """Compute derived values once per tick, reused by multiple publishers.
 
-        Caches quaternions, speeds, and min_scan values to avoid redundant
-        computation in _publish_odom, _publish_transforms, _publish_speed_markers, etc.
+        Caches quaternions and speeds to avoid redundant computation.
         """
         for i in range(self.num_agents):
             # Cache quaternion (transforms3d returns [w, x, y, z])
@@ -720,26 +436,25 @@ class GymBridge(Node):
                 self.obs["linear_vels_x"][i]**2 +
                 self.obs["linear_vels_y"][i]**2
             )
-            # Cache min scan distance
-            self._cached_min_scans[i] = np.min(self.obs["scans"][i])
 
     def _visualization_timer_callback(self):
         """Publish visualization markers at 5 Hz (reduced from 20-40 Hz sensor rate)."""
         if not self.simulation_running or self.simulation_paused:
             return
+
+        # Only publish if there are subscribers
         ts = self.get_clock().now().to_msg()
-        self._publish_name_markers(ts)
-        self._publish_speed_markers(ts)
-        self._publish_velocity_arrows(ts)
-        self._publish_safety_zones(ts)
-        self._publish_start_finish_line(ts)
-        self._publish_lap_point_marker(ts)
+        if self.marker_pub.get_subscription_count() > 0:
+            self._publish_name_markers(ts)
+        if self.speed_marker_pub.get_subscription_count() > 0:
+            self._publish_speed_markers(ts)
 
     def _stats_timer_callback(self):
         """Publish JSON race stats at 2 Hz (reduced from 20-40 Hz sensor rate)."""
         if not self.simulation_running or self.simulation_paused:
             return
-        self._publish_race_stats_json(self.get_clock().now().to_msg())
+        if self.race_stats_pub.get_subscription_count() > 0:
+            self._publish_race_stats_json(self.get_clock().now().to_msg())
 
     def timer_callback(self):
         if self.simulation_running and not self.simulation_paused:
@@ -749,17 +464,17 @@ class GymBridge(Node):
             self._update_tick_cache()
 
             # Publish scans for each agent (using pre-allocated messages)
+            # Fast path: directly use numpy array when no obstacles
             for i in range(self.num_agents):
                 self._scan_msgs[i].header.stamp = ts
-                # Apply obstacle modifications to scan data
-                ranges = self._apply_obstacles_to_scan(i)
-                self._scan_msgs[i].ranges = ranges
+                # Fast path: use array directly, avoid list conversion
+                scan_data = self.obs["scans"][i]
+                self._scan_msgs[i].ranges = scan_data.tolist()
                 self.scan_publishers[i].publish(self._scan_msgs[i])
 
             # Publish transforms and odom (markers moved to 5 Hz visualization_timer)
             self._publish_odom(ts)
             self._publish_transforms(ts)
-            self._publish_laser_transforms(ts)
             self._publish_wheel_transforms(ts)
 
             # Update trajectory history (paths published at 5 Hz by separate timer)
@@ -774,32 +489,6 @@ class GymBridge(Node):
         rqw = pose_msg.pose.pose.orientation.w
         _, _, rtheta = euler.quat2euler([rqw, rqx, rqy, rqz], axes="rxyz")
 
-        # Handle Set Lap Point mode
-        if self.set_lap_point_mode:
-            self.lap_point_position = (rx, ry)
-            self.lap_point_orientation = rtheta  # Store orientation for marker
-            self._lap_point_published = False  # Force re-publish of marker
-            self.set_lap_point_mode = False
-            self.get_logger().info(f"Lap point set to ({rx:.2f}, {ry:.2f}) at angle {np.degrees(rtheta):.1f}°")
-            # Publish feedback to plugin
-            feedback = String()
-            feedback.data = "lap_point_complete"
-            self.mode_feedback_pub.publish(feedback)
-            return  # Don't reset car poses
-
-        # Handle Spawn Obstacle mode
-        if self.spawn_obstacle_mode:
-            radius = 0.15  # Default obstacle radius
-            self.obstacles.append((rx, ry, radius))
-            self.get_logger().info(f"Spawned obstacle at ({rx:.2f}, {ry:.2f})")
-            self._publish_obstacle_markers()
-            self.spawn_obstacle_mode = False
-            # Publish feedback to plugin
-            feedback = String()
-            feedback.data = "spawn_obstacle_complete"
-            self.mode_feedback_pub.publish(feedback)
-            return  # Don't reset car poses
-
         # Handle Spawn All mode
         if self.spawn_all_mode:
             # Spawn all racecars in a vertical line (one behind the other)
@@ -809,40 +498,24 @@ class GymBridge(Node):
 
             for i in range(self.num_agents):
                 # First car at exact position, others offset behind
-                self.pose_reset_arr[i][0] = rx + i * spacing * np.cos(behind_theta)
-                self.pose_reset_arr[i][1] = ry + i * spacing * np.sin(behind_theta)
-                self.pose_reset_arr[i][2] = rtheta  # All face same direction
+                x = rx + i * spacing * np.cos(behind_theta)
+                y = ry + i * spacing * np.sin(behind_theta)
+                self._pending_pose_updates[i] = (x, y, rtheta)
                 # Clear disqualification for all racecars
                 self.agent_disqualified[i] = False
-                self.lap_time_trackers[i].reset(restart=True)
-            
+
             self.get_logger().info(f"Spawned all {self.num_agents} racecars in vertical line ({spacing}m apart)")
             self.spawn_all_mode = False
-            # Publish feedback to plugin
-            feedback = String()
-            feedback.data = "spawn_all_complete"
-            self.mode_feedback_pub.publish(feedback)
         else:
-            # Single racecar pose reset (original behavior)
-            for i in range(self.num_agents):
-                self.pose_reset_arr[i][0] = self.obs["poses_x"][i]
-                self.pose_reset_arr[i][1] = self.obs["poses_y"][i]
-                self.pose_reset_arr[i][2] = self.obs["poses_theta"][i]
-
+            # Single racecar pose reset (original behavior) - queue incremental update
             try:
                 # When a pose reset is sent, racecar stops being disqualified
                 if self.agent_disqualified[self.active_racecar_to_reset_pose]:
                     self.agent_disqualified[self.active_racecar_to_reset_pose] = False
-                    self.lap_time_trackers[self.active_racecar_to_reset_pose].reset(restart=True)
 
-                self.pose_reset_arr[self.active_racecar_to_reset_pose][0] = rx
-                self.pose_reset_arr[self.active_racecar_to_reset_pose][1] = ry
-                self.pose_reset_arr[self.active_racecar_to_reset_pose][2] = rtheta
+                self._pending_pose_updates[self.active_racecar_to_reset_pose] = (rx, ry, rtheta)
             except IndexError:
                 self.get_logger().warn("Chosen racecar does not exist")
-
-        self.obs, _, self.done, _ = self.env.reset(
-            np.array(self.pose_reset_arr))
 
     def _publish_odom(self, ts):
         """Publish odometry for all agents using pre-allocated messages."""
@@ -887,7 +560,7 @@ class GymBridge(Node):
             m.id       = i
             m.type     = Marker.TEXT_VIEW_FACING
             m.action   = Marker.ADD
-            m.pose.position.z = 0.5      # half‑meter above roof
+            m.pose.position.z = 0.5      # half-meter above roof
             m.scale.z  = 0.3             # text height (m)
             r, g, b    = self.AGENT_COLORS[i % len(self.AGENT_COLORS)]
             m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 1.0
@@ -902,7 +575,7 @@ class GymBridge(Node):
             ns = f"{self.racecar_namespace}{i+1}"
             # Use cached speed (computed once per tick in _update_tick_cache)
             speed = self._cached_speeds[i]
-            
+
             m = Marker()
             m.header.stamp = ts
             m.header.frame_id = f"{ns}/base_link"
@@ -912,7 +585,7 @@ class GymBridge(Node):
             m.action = Marker.ADD
             m.pose.position.z = 0.8  # Above the name marker
             m.scale.z = 0.25  # Slightly smaller than name
-            
+
             # Color gradient: green (slow) -> yellow (medium) -> red (fast)
             # Assuming max speed around 8 m/s
             speed_ratio = min(speed / 8.0, 1.0)
@@ -926,7 +599,7 @@ class GymBridge(Node):
                 m.color.g = 1.0 - (speed_ratio - 0.5) * 2.0
             m.color.b = 0.0
             m.color.a = 1.0
-            
+
             m.text = f"{speed:.1f} m/s"
             arr.markers.append(m)
         self.speed_marker_pub.publish(arr)
@@ -953,142 +626,20 @@ class GymBridge(Node):
         """Publish trajectory paths for all agents (called at 5 Hz)."""
         if not self.simulation_running or self.simulation_paused:
             return
-        
+
         ts = self.get_clock().now().to_msg()
         for i in range(self.num_agents):
+            # Only publish if there are subscribers
+            if self.path_publishers[i].get_subscription_count() == 0:
+                continue
             if len(self.trajectory_history[i]) < 2:
                 continue
-            
+
             path = Path()
             path.header.stamp = ts
             path.header.frame_id = "map"
             path.poses = list(self.trajectory_history[i])
             self.path_publishers[i].publish(path)
-
-    def _publish_velocity_arrows(self, ts):
-        """Publish arrow markers showing velocity direction and magnitude."""
-        arr = MarkerArray()
-        for i in range(self.num_agents):
-            ns = f"{self.racecar_namespace}{i+1}"
-            # Use cached speed (computed once per tick in _update_tick_cache)
-            speed = self._cached_speeds[i]
-            
-            m = Marker()
-            m.header.stamp = ts
-            m.header.frame_id = f"{ns}/base_link"
-            m.ns = "velocity_arrows"
-            m.id = i
-            m.type = Marker.ARROW
-            m.action = Marker.ADD
-            
-            # Arrow points in direction of velocity, length proportional to speed
-            m.scale.x = max(0.1, speed * 0.3)  # Arrow length
-            m.scale.y = 0.05  # Arrow width
-            m.scale.z = 0.05  # Arrow height
-            
-            # Color gradient: green (slow) -> red (fast)
-            speed_ratio = min(speed / 8.0, 1.0)
-            if speed_ratio < 0.5:
-                m.color.r = speed_ratio * 2.0
-                m.color.g = 1.0
-            else:
-                m.color.r = 1.0
-                m.color.g = 1.0 - (speed_ratio - 0.5) * 2.0
-            m.color.b = 0.0
-            m.color.a = 0.8
-            
-            arr.markers.append(m)
-        self.velocity_arrow_pub.publish(arr)
-
-    def _publish_safety_zones(self, ts):
-        """Publish transparent circles around each agent showing safety zone."""
-        arr = MarkerArray()
-        collision_threshold = 0.21
-        warning_threshold = 0.5
-        
-        for i in range(self.num_agents):
-            ns = f"{self.racecar_namespace}{i+1}"
-            # Use cached min_scan (computed once per tick in _update_tick_cache)
-            min_scan = self._cached_min_scans[i]
-
-            m = Marker()
-            m.header.stamp = ts
-            m.header.frame_id = f"{ns}/base_link"
-            m.ns = "safety_zones"
-            m.id = i
-            m.type = Marker.CYLINDER
-            m.action = Marker.ADD
-            
-            m.pose.position.z = 0.01  # Slightly above ground
-            m.scale.x = 0.6  # Diameter
-            m.scale.y = 0.6
-            m.scale.z = 0.02  # Very thin
-            
-            # Color based on proximity to obstacles
-            if self.agent_disqualified[i]:
-                m.color.r, m.color.g, m.color.b = 0.5, 0.5, 0.5  # Gray if disqualified
-            elif min_scan <= collision_threshold:
-                m.color.r, m.color.g, m.color.b = 1.0, 0.0, 0.0  # Red - collision!
-            elif min_scan <= warning_threshold:
-                m.color.r, m.color.g, m.color.b = 1.0, 1.0, 0.0  # Yellow - warning
-            else:
-                m.color.r, m.color.g, m.color.b = 0.0, 1.0, 0.0  # Green - safe
-            m.color.a = 0.3
-            
-            arr.markers.append(m)
-        self.safety_zone_pub.publish(arr)
-
-    def _publish_start_finish_line(self, ts):
-        """Publish start/finish line marker (once)."""
-        if self._start_finish_published:
-            return
-        
-        arr = MarkerArray()
-        
-        # Start/Finish line marker
-        line = Marker()
-        line.header.stamp = ts
-        line.header.frame_id = "map"
-        line.ns = "race_markers"
-        line.id = 0
-        line.type = Marker.LINE_STRIP
-        line.action = Marker.ADD
-        line.scale.x = 0.1  # Line width
-        line.color.r = 1.0
-        line.color.g = 1.0
-        line.color.b = 1.0
-        line.color.a = 1.0
-        
-        # Line across start position (perpendicular to track at origin)
-        from geometry_msgs.msg import Point
-        p1 = Point()
-        p1.x, p1.y, p1.z = -1.0, -2.0, 0.05
-        p2 = Point()
-        p2.x, p2.y, p2.z = -1.0, 2.0, 0.05
-        line.points = [p1, p2]
-        arr.markers.append(line)
-        
-        # START/FINISH text
-        text = Marker()
-        text.header.stamp = ts
-        text.header.frame_id = "map"
-        text.ns = "race_markers"
-        text.id = 1
-        text.type = Marker.TEXT_VIEW_FACING
-        text.action = Marker.ADD
-        text.pose.position.x = -1.0
-        text.pose.position.y = 0.0
-        text.pose.position.z = 0.5
-        text.scale.z = 0.4
-        text.color.r = 1.0
-        text.color.g = 1.0
-        text.color.b = 0.0
-        text.color.a = 1.0
-        text.text = "START / FINISH"
-        arr.markers.append(text)
-        
-        self.race_markers_pub.publish(arr)
-        self._start_finish_published = True
 
     def _publish_race_stats_json(self, ts):
         """Publish comprehensive race stats as JSON for UI consumption."""
@@ -1099,11 +650,10 @@ class GymBridge(Node):
             "simulation_paused": self.simulation_paused,
             "agents": []
         }
-        
+
         for i in range(self.num_agents):
             # Use cached values (computed once per tick in _update_tick_cache)
             speed = self._cached_speeds[i]
-            min_scan = self._cached_min_scans[i]
 
             agent_stats = {
                 "id": i + 1,
@@ -1114,13 +664,10 @@ class GymBridge(Node):
                     "theta": float(self.obs["poses_theta"][i])
                 },
                 "speed": float(speed),
-                "min_scan_distance": float(min_scan),
-                "current_lap_time": self.lap_time_trackers[i].get_elapsed_time(),
-                "best_lap_time": self.best_lap_times[i],
                 "disqualified": self.agent_disqualified[i]
             }
             stats["agents"].append(agent_stats)
-        
+
         msg = String()
         msg.data = json.dumps(stats)
         self.race_stats_pub.publish(msg)
@@ -1179,33 +726,6 @@ class GymBridge(Node):
             right_wheel_ts.child_frame_id = racecar_namespace + "/front_right_wheel"
             transforms.append(right_wheel_ts)
         self.br.sendTransform(transforms)  # Single batch call
-
-    def _publish_laser_transforms(self, ts):
-        """Publish laser transforms for all agents in a single batch."""
-        transforms = []
-        for i in range(self.num_agents):
-            racecar_namespace = self.racecar_namespace + str(i + 1)
-            racecar_scan_ts = TransformStamped()
-            racecar_scan_ts.transform.translation.x = self.scan_distance_to_base_link
-            racecar_scan_ts.transform.rotation.w = 1.0
-            racecar_scan_ts.header.stamp = ts
-            racecar_scan_ts.header.frame_id = racecar_namespace + "/base_link"
-            racecar_scan_ts.child_frame_id = racecar_namespace + "/laser"
-            transforms.append(racecar_scan_ts)
-        self.br.sendTransform(transforms)  # Single batch call
-
-    def publish_lap_times(self):
-        if not self.simulation_paused and self.simulation_running:
-            lap_times_str = ""
-            lap_times_msg = String()
-            for agent_idx, tracker in enumerate(self.lap_time_trackers):
-                elapsed_time = tracker.get_elapsed_time()
-                lap_times_str += f"Racecar {agent_idx + 1}: Current Lap: {elapsed_time:.4f} Best Lap: {self.best_lap_times[agent_idx]:.4f}{' Disqualified' if self.agent_disqualified[agent_idx] else ''}\n"
-            lap_times_msg.data = lap_times_str
-            self.lap_time_publisher.publish(lap_times_msg)
-        else:
-            for tracker in self.lap_time_trackers:
-                tracker.pause()
 
 
 def main(args=None):
