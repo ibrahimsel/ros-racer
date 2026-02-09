@@ -13,19 +13,11 @@ echo "MIN_SPEED: 1.5 m/s"
 echo "SAFE_GAP:  1.8 m"
 echo ""
 
-# Source ROS environment
+# Source ROS environment and pre-built gap_follower from edge container
 source /opt/ros/humble/setup.bash
+source /edge/install/setup.bash
 
-# Build the workspace if not already built
-if [ ! -d "install" ]; then
-    echo "Building workspace..."
-    colcon build --symlink-install
-fi
-
-# Source the workspace
-source install/setup.bash
-
-# Export parameters as environment variables (for future parameterized version)
+# Export parameters as environment variables
 export GAP_FOLLOWER_MAX_SPEED=2.5
 export GAP_FOLLOWER_MIN_SPEED=1.5
 export GAP_FOLLOWER_SAFE_GAP=1.8
