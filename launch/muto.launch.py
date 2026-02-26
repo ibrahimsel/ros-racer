@@ -201,6 +201,7 @@ def generate_launch_description():
             {"name": vehicle_name},
             {"namespace": vehicle_namespace},
             {"symphony_target_name": vehicle_name},
+            {"symphony_name": vehicle_name},
             env_params,
         ],
         arguments=['--ros-args', '--log-level', log_level]
