@@ -1137,10 +1137,10 @@ main() {
     phase_start_simulation
 
     # PART 2: Direct Deployment (simplified to 2 variants + rollback demo)
-    # phase_direct_header
-    # phase_deploy_conservative
-    # phase_deploy_aggressive
-    # phase_deploy_broken
+    phase_direct_header
+    phase_deploy_conservative
+    phase_deploy_aggressive
+    phase_deploy_broken
 
     # PART 3: Symphony Orchestration
     phase_symphony_header
